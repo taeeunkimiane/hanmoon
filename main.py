@@ -853,6 +853,7 @@ if 'show_answer' not in st.session_state:
 def main():
     st.set_page_config(page_title="📚 한자 & 사자성어 학습", page_icon="📚", layout="wide")
     
+    # 메인 타이틀만 간단히
     st.title("📚 한자 & 사자성어 학습 사이트")
     st.markdown("---")
     
@@ -930,7 +931,7 @@ def main():
         else:
             st.info("아직 문제를 풀지 않았습니다.")
     
-    # 메인 컨텐츠
+    # 메인 컨텐츠 - 깔끔하게 내용만
     if mode == "🏠 홈":
         show_home()
     elif mode == "📚 암기 연습":
