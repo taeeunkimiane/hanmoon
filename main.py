@@ -1039,7 +1039,6 @@ def show_memory_question():
     with col1:
         if st.button("💡 정답 확인", use_container_width=True):
             st.session_state.show_answer = True
-            st.rerun()
     
     with col2:
         if st.button("⏭️ 다음 문제", use_container_width=True):
