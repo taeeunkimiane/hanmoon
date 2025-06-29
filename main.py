@@ -1048,6 +1048,7 @@ def show_memory_question():
             if st.button("⏭️ 다음 문제", use_container_width=True):
                 practice_type = get_practice_type_from_question(question)
                 generate_memory_question(practice_type)
+                st.rerun()
     
     # 정답 표시
     if st.session_state.show_answer:
@@ -1057,8 +1058,8 @@ def show_memory_question():
         if hasattr(st.session_state, 'user_memory_answer'):
             user_ans = st.session_state.user_memory_answer.strip()
             if user_ans:
-                if user_ans.lower() in question['answer'].lower() or question['answer'].lower() in user_ans.lower():
-                    st.balloons()
+                # 정확한 정답만 인정
+                if user_ans == question['answer']:
                     st.success("🎉 정답입니다!")
                 else:
                     st.error(f"❌ 틀렸습니다. 입력한 답: {user_ans}")
@@ -1080,6 +1081,12 @@ def show_memory_question():
             
             st.info(f"**겉뜻:** {question['outer_meaning']}")
             st.info(f"**속뜻:** {question['inner_meaning']}")
+        
+        # 다음 문제 버튼
+        if st.button("➡️ 다음 문제", use_container_width=True, key="next_memory"):
+            practice_type = get_practice_type_from_question(question)
+            generate_memory_question(practice_type)
+            st.rerun()
 
 def get_practice_type_from_question(question):
     if question["type"] == "hanja_to_meaning":
@@ -1165,12 +1172,12 @@ def generate_multiple_choice_question(quiz_type):
             correct_meaning = data["outer_meaning"]
             # 다른 사자성어의 겉뜻들
             wrong_choices = random.sample([item[1]["outer_meaning"] for item in IDIOM_DATA.items() if item[0] != correct_idiom], 3)
-            question_text = f"다음 사자성어의 겉뜻은? **{correct_idiom}** ({correct_korean})"
+            question_text = f"다음 사자성어의 겉뜻은? **{correct_idiom}**"
         else:  # 속뜻
             correct_meaning = data["inner_meaning"]
             # 다른 사자성어의 속뜻들
             wrong_choices = random.sample([item[1]["inner_meaning"] for item in IDIOM_DATA.items() if item[0] != correct_idiom], 3)
-            question_text = f"다음 사자성어의 속뜻은? **{correct_idiom}** ({correct_korean})"
+            question_text = f"다음 사자성어의 속뜻은? **{correct_idiom}**"
         
         choices = [correct_meaning] + wrong_choices
         random.shuffle(choices)
@@ -1225,20 +1232,20 @@ def generate_ox_question(quiz_type):
         if "겉뜻" in quiz_type:
             correct_meaning = data["outer_meaning"]
             if is_correct:
-                question_text = f"사자성어 '{idiom}({korean})'의 겉뜻은 '{correct_meaning}'이다."
+                question_text = f"사자성어 '{idiom}'의 겉뜻은 '{correct_meaning}'이다."
                 correct_answer = "O"
             else:
                 wrong_meaning = random.choice([item[1]["outer_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom])
-                question_text = f"사자성어 '{idiom}({korean})'의 겉뜻은 '{wrong_meaning}'이다."
+                question_text = f"사자성어 '{idiom}'의 겉뜻은 '{wrong_meaning}'이다."
                 correct_answer = "X"
         else:  # 속뜻
             correct_meaning = data["inner_meaning"]
             if is_correct:
-                question_text = f"사자성어 '{idiom}({korean})'의 속뜻은 '{correct_meaning}'이다."
+                question_text = f"사자성어 '{idiom}'의 속뜻은 '{correct_meaning}'이다."
                 correct_answer = "O"
             else:
                 wrong_meaning = random.choice([item[1]["inner_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom])
-                question_text = f"사자성어 '{idiom}({korean})'의 속뜻은 '{wrong_meaning}'이다."
+                question_text = f"사자성어 '{idiom}'의 속뜻은 '{wrong_meaning}'이다."
                 correct_answer = "X"
         
         # 한자 분석 추가
@@ -1287,7 +1294,6 @@ def show_quiz_question():
         if hasattr(st.session_state, 'quiz_result'):
             if st.session_state.quiz_result:
                 st.success("🎉 정답입니다!")
-                st.balloons()
             else:
                 st.error("❌ 틀렸습니다!")
                 # 틀린 문제를 복습 노트에 추가
@@ -1302,13 +1308,13 @@ def show_quiz_question():
         st.info(f"**설명:** {question['explanation']}")
         
         if st.button("➡️ 다음 문제", use_container_width=True):
-            # 같은 유형의 다음 문제 생성
+            # 같은 유형의 다음 문제 생성하고 자동으로 화면 새로고침
             if question["quiz_type"] == "multiple_choice":
                 if question["type"] == "hanja":
                     generate_quiz_question("한자 4지선다")
                 else:
-                    # 이전 유형 유지
-                    if "겉뜻" in str(st.session_state.get('last_quiz_type', '')):
+                    # 현재 문제에서 겉뜻/속뜻 유형 파악
+                    if "겉뜻" in question["question"]:
                         generate_quiz_question("사자성어 4지선다 (겉뜻)")
                     else:
                         generate_quiz_question("사자성어 4지선다 (속뜻)")
@@ -1316,11 +1322,14 @@ def show_quiz_question():
                 if question["type"] == "hanja":
                     generate_quiz_question("한자 O/X 퀴즈")
                 else:
-                    # 이전 유형 유지
-                    if "겉뜻" in str(st.session_state.get('last_quiz_type', '')):
+                    # 현재 문제에서 겉뜻/속뜻 유형 파악
+                    if "겉뜻" in question["question"]:
                         generate_quiz_question("사자성어 O/X 퀴즈 (겉뜻)")
                     else:
                         generate_quiz_question("사자성어 O/X 퀴즈 (속뜻)")
+            
+            # 화면 새로고침
+            st.rerun()
 
 def check_quiz_answer(user_answer, correct_answer):
     st.session_state.show_answer = True
