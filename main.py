@@ -853,9 +853,7 @@ if 'show_answer' not in st.session_state:
 def main():
     st.set_page_config(page_title="📚 한자 & 사자성어 학습", page_icon="📚", layout="wide")
     
-    # 메인 타이틀만 간단히
-    st.title("📚 한자 & 사자성어 학습 사이트")
-    st.markdown("---")
+    # 메인 화면에는 아무 타이틀도 표시하지 않음
     
     # 사이드바 - 메뉴 및 모든 선택 옵션
     with st.sidebar:
@@ -946,8 +944,6 @@ def main():
         show_idiom_search()
 
 def show_home():
-    st.header("🏠 홈")
-    
     col1, col2 = st.columns(2)
     
     with col1:
@@ -1083,8 +1079,7 @@ def generate_memory_question(practice_type):
 def show_memory_question():
     question = st.session_state.current_question
     
-    # 문제 표시
-    st.markdown("### 📝 문제")
+    # 문제 표시 (헤더 없이 바로 문제만)
     st.markdown(f"<div style='font-size: 24px; padding: 20px; background-color: #f0f0f0; border-radius: 10px; text-align: center;'>{question['question']}</div>", unsafe_allow_html=True)
     
     # 플래시 카드 형식 - 상단에 버튼 2개
@@ -1298,8 +1293,7 @@ def generate_ox_question(quiz_type):
 def show_quiz_question():
     question = st.session_state.current_question
     
-    # 문제 표시
-    st.markdown("### 📝 문제")
+    # 문제 표시 (헤더 없이 바로 문제만)
     st.markdown(f"<div style='font-size: 18px; padding: 20px; background-color: #f0f0f0; border-radius: 10px;'>{question['question']}</div>", unsafe_allow_html=True)
     
     if not st.session_state.show_answer:
@@ -1379,8 +1373,6 @@ def check_quiz_answer(user_answer, correct_answer):
         st.session_state.quiz_result = False
 
 def show_statistics():
-    st.header("📊 학습 통계")
-    
     if st.session_state.score["total"] == 0:
         st.info("아직 퀴즈를 풀지 않았습니다. 퀴즈를 먼저 풀어보세요!")
         return
@@ -1420,8 +1412,6 @@ def show_statistics():
     st.info(f"틀린 문제: {len(st.session_state.wrong_answers)}개")
 
 def show_review_notes():
-    st.header("💾 복습 노트")
-    
     if not st.session_state.wrong_answers:
         st.info("아직 틀린 문제가 없습니다. 퀴즈를 풀어보세요!")
         return
@@ -1443,8 +1433,6 @@ def show_review_notes():
             st.markdown(f"**설명:** {item['explanation']}")
 
 def show_idiom_search():
-    st.header("🔍 사자성어 검색")
-    
     # 검색 기능
     if hasattr(st.session_state, 'search_term') and st.session_state.search_term:
         search_term = st.session_state.search_term
