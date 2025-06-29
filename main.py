@@ -856,7 +856,7 @@ def main():
     st.title("📚 한자 & 사자성어 학습 사이트")
     st.markdown("---")
     
-    # 사이드바 - 메뉴
+    # 사이드바 - 메뉴 및 모든 선택 옵션
     with st.sidebar:
         st.header("📋 메뉴")
         mode = st.selectbox("학습 모드 선택", [
@@ -867,6 +867,58 @@ def main():
             "💾 복습 노트",
             "🔍 사자성어 검색"
         ])
+        
+        st.markdown("---")
+        
+        # 암기 연습 모드 설정
+        if mode == "📚 암기 연습":
+            st.subheader("📚 암기 연습 설정")
+            practice_type = st.selectbox("연습 유형 선택", [
+                "한자 → 뜻 맞히기",
+                "뜻 → 한자 맞히기", 
+                "사자성어 → 겉뜻 맞히기",
+                "사자성어 → 속뜻 맞히기",
+                "겉뜻 → 사자성어 맞히기",
+                "속뜻 → 사자성어 맞히기"
+            ])
+            
+            if st.button("🎯 새 문제 시작", use_container_width=True):
+                generate_memory_question(practice_type)
+            
+            if st.button("🔄 초기화", use_container_width=True):
+                st.session_state.current_question = None
+                st.session_state.show_answer = False
+        
+        # 퀴즈 모드 설정
+        elif mode == "🧠 퀴즈 모드":
+            st.subheader("🧠 퀴즈 설정")
+            quiz_type = st.selectbox("퀴즈 유형 선택", [
+                "한자 4지선다",
+                "사자성어 4지선다 (겉뜻)", 
+                "사자성어 4지선다 (속뜻)",
+                "한자 O/X 퀴즈",
+                "사자성어 O/X 퀴즈 (겉뜻)",
+                "사자성어 O/X 퀴즈 (속뜻)",
+                "혼합 랜덤 퀴즈"
+            ])
+            
+            if st.button("🎯 퀴즈 시작", use_container_width=True):
+                generate_quiz_question(quiz_type)
+            
+            if st.button("🔄 초기화", use_container_width=True):
+                st.session_state.current_question = None
+                st.session_state.show_answer = False
+        
+        # 사자성어 검색 설정
+        elif mode == "🔍 사자성어 검색":
+            st.subheader("🔍 검색 설정")
+            search_term = st.text_input("사자성어 검색:")
+            if search_term:
+                st.session_state.search_term = search_term
+            
+            show_all = st.checkbox("전체 목록 보기")
+            if show_all:
+                st.session_state.show_all_idioms = True
         
         st.markdown("---")
         st.markdown("### 📈 현재 점수")
@@ -1392,9 +1444,10 @@ def show_review_notes():
 def show_idiom_search():
     st.header("🔍 사자성어 검색")
     
-    search_term = st.text_input("사자성어를 검색하세요 (한자, 한글, 뜻 모두 가능):")
-    
-    if search_term:
+    # 검색 기능
+    if hasattr(st.session_state, 'search_term') and st.session_state.search_term:
+        search_term = st.session_state.search_term
+        
         # 검색 결과
         results = []
         for idiom, data in IDIOM_DATA.items():
@@ -1415,45 +1468,19 @@ def show_idiom_search():
                     
                     st.markdown(f"**겉뜻:** {data['outer_meaning']}")
                     st.markdown(f"**속뜻:** {data['inner_meaning']}")
-                    
-                    # 퀴즈 버튼
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button(f"겉뜻 퀴즈", key=f"outer_{idiom}"):
-                            # 겉뜻 퀴즈 생성
-                            st.session_state.current_question = {
-                                "type": "idiom_to_outer",
-                                "question": f"{idiom} ({data['korean']})",
-                                "answer": data['outer_meaning'],
-                                "idiom": idiom,
-                                "korean": data['korean'],
-                                "outer_meaning": data['outer_meaning'],
-                                "inner_meaning": data['inner_meaning']
-                            }
-                            st.session_state.show_answer = False
-                    
-                    with col2:
-                        if st.button(f"속뜻 퀴즈", key=f"inner_{idiom}"):
-                            # 속뜻 퀴즈 생성
-                            st.session_state.current_question = {
-                                "type": "idiom_to_inner",
-                                "question": f"{idiom} ({data['korean']})",
-                                "answer": data['inner_meaning'],
-                                "idiom": idiom,
-                                "korean": data['korean'],
-                                "outer_meaning": data['outer_meaning'],
-                                "inner_meaning": data['inner_meaning']
-                            }
-                            st.session_state.show_answer = False
         else:
             st.warning("검색 결과가 없습니다.")
     
     # 전체 사자성어 목록 보기
-    if st.checkbox("전체 사자성어 목록 보기"):
+    if hasattr(st.session_state, 'show_all_idioms') and st.session_state.show_all_idioms:
         st.markdown(f"### 📚 전체 사자성어 ({len(IDIOM_DATA)}개)")
         
         for idiom, data in sorted(IDIOM_DATA.items()):
             st.markdown(f"**{idiom}** ({data['korean']}) - {data['outer_meaning']}")
+    
+    # 기본 안내 메시지
+    if not hasattr(st.session_state, 'search_term') and not hasattr(st.session_state, 'show_all_idioms'):
+        st.info("왼쪽 사이드바에서 검색어를 입력하거나 전체 목록을 확인하세요.")
 
 if __name__ == "__main__":
     main()
