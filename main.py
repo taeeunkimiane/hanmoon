@@ -1034,21 +1034,20 @@ def show_memory_question():
     st.markdown("### 📝 문제")
     st.markdown(f"<div style='font-size: 24px; padding: 20px; background-color: #f0f0f0; border-radius: 10px; text-align: center;'>{question['question']}</div>", unsafe_allow_html=True)
     
-    # 플래시 카드 형식
-    if not st.session_state.show_answer:
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💡 정답 확인", use_container_width=True):
-                st.session_state.show_answer = True
-                st.rerun()
-        
-        with col2:
-            if st.button("⏭️ 다음 문제", use_container_width=True):
-                practice_type = get_practice_type_from_question(question)
-                generate_memory_question(practice_type)
-                st.rerun()
+    # 플래시 카드 형식 - 상단에 버튼 2개
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💡 정답 확인", use_container_width=True):
+            st.session_state.show_answer = True
+            st.rerun()
     
-    # 정답 표시
+    with col2:
+        if st.button("⏭️ 다음 문제", use_container_width=True):
+            practice_type = get_practice_type_from_question(question)
+            generate_memory_question(practice_type)
+            st.rerun()
+    
+    # 정답 표시 (정답 확인 버튼을 눌렀을 때만)
     if st.session_state.show_answer:
         st.markdown("### ✅ 정답")
         st.success(f"**정답:** {question['answer']}")
@@ -1070,12 +1069,6 @@ def show_memory_question():
             
             st.info(f"**겉뜻:** {question['outer_meaning']}")
             st.info(f"**속뜻:** {question['inner_meaning']}")
-        
-        # 다음 문제 버튼
-        if st.button("➡️ 다음 문제", use_container_width=True, key="next_memory"):
-            practice_type = get_practice_type_from_question(question)
-            generate_memory_question(practice_type)
-            st.rerun()
 
 def get_practice_type_from_question(question):
     if question["type"] == "hanja_to_meaning":
