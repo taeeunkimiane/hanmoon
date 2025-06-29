@@ -1034,15 +1034,12 @@ def show_memory_question():
     st.markdown("### 📝 문제")
     st.markdown(f"<div style='font-size: 24px; padding: 20px; background-color: #f0f0f0; border-radius: 10px; text-align: center;'>{question['question']}</div>", unsafe_allow_html=True)
     
-    # 답안 입력
+    # 플래시 카드 형식 - 정답 확인 버튼만
     if not st.session_state.show_answer:
-        user_answer = st.text_input("답을 입력하세요:", key="memory_answer")
-        
         col1, col2 = st.columns(2)
         with col1:
             if st.button("💡 정답 확인", use_container_width=True):
                 st.session_state.show_answer = True
-                st.session_state.user_memory_answer = user_answer
         
         with col2:
             if st.button("⏭️ 다음 문제", use_container_width=True):
@@ -1054,15 +1051,6 @@ def show_memory_question():
     if st.session_state.show_answer:
         st.markdown("### ✅ 정답")
         st.success(f"**정답:** {question['answer']}")
-        
-        if hasattr(st.session_state, 'user_memory_answer'):
-            user_ans = st.session_state.user_memory_answer.strip()
-            if user_ans:
-                # 정확한 정답만 인정
-                if user_ans == question['answer']:
-                    st.success("🎉 정답입니다!")
-                else:
-                    st.error(f"❌ 틀렸습니다. 입력한 답: {user_ans}")
         
         # 상세 정보 표시
         if "hanja" in question:
