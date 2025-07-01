@@ -402,10 +402,10 @@ IDIOM_DATA = {
     "三馬太守": {
         "korean": "삼마태수",
         "outer_meaning": "세마리의 말만 타고 행차하는 수령",
-        "inner_meaning": "여러 사람이 한 자리를 놓고 다툼"
+        "inner_meaning": "재물을 탐하지 않는 청렴하고 결백한 관리"
     },
     "鷄卵有骨": {
-        "korean": "계간유골",
+        "korean": "계란유골",
         "outer_meaning": "달걀이 곯았다",
         "inner_meaning": "운수가 나쁜 사람은 모처럼 좋은 기회를 만나도 역시 일이 잘 안됨"
     },
@@ -504,8 +504,8 @@ IDIOM_DATA = {
         "outer_meaning": "흥청거리며 망청거린다",
         "inner_meaning": "돈이나 물건을 함부로 쓰며 마음껏 즐기는 모양"
     },
-    "櫟木槁": {
-        "korean": "노목계",
+    "櫟木櫃": {
+        "korean": "노목궤",
         "outer_meaning": "상수리나무가 마른다",
         "inner_meaning": "조금도 융통성이 없는 미련한 사람"
     },
