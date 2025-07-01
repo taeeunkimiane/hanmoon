@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import random
 import json
 import time
@@ -869,187 +868,9 @@ if 'exam_results' not in st.session_state:
     st.session_state.exam_results = None
 if 'review_list' not in st.session_state:
     st.session_state.review_list = []
-if 'keyboard_action' not in st.session_state:
-    st.session_state.keyboard_action = None
-if 'selected_choice' not in st.session_state:
-    st.session_state.selected_choice = None
-
-def add_keyboard_handler(mode="general"):
-    """키보드 이벤트 핸들러 추가"""
-    keyboard_js = f"""
-    <script>
-    let keyboardData = null;
-    
-    document.addEventListener('keydown', function(event) {{
-        // 입력 필드에 포커스되어 있으면 무시
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {{
-            return;
-        }}
-        
-        event.preventDefault();
-        
-        switch(event.key) {{
-            case '1':
-                keyboardData = {{'action': 'show_answer', 'timestamp': Date.now()}};
-                break;
-            case '2':
-                keyboardData = {{'action': 'next_question', 'timestamp': Date.now()}};
-                break;
-            case 'a':
-            case 'A':
-                keyboardData = {{'action': 'select_choice', 'value': 0, 'timestamp': Date.now()}};
-                break;
-            case 'b':
-            case 'B':
-                keyboardData = {{'action': 'select_choice', 'value': 1, 'timestamp': Date.now()}};
-                break;
-            case 'c':
-            case 'C':
-                keyboardData = {{'action': 'select_choice', 'value': 2, 'timestamp': Date.now()}};
-                break;
-            case 'd':
-            case 'D':
-                keyboardData = {{'action': 'select_choice', 'value': 3, 'timestamp': Date.now()}};
-                break;
-            case 'e':
-            case 'E':
-                keyboardData = {{'action': 'select_choice', 'value': 4, 'timestamp': Date.now()}};
-                break;
-            case 'Enter':
-                keyboardData = {{'action': 'submit_answer', 'timestamp': Date.now()}};
-                break;
-        }}
-        
-        // Streamlit에 데이터 전송
-        if (keyboardData) {{
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                value: keyboardData
-            }}, '*');
-        }}
-    }});
-    
-    // 화면에 단축키 안내 표시
-    const helpDiv = document.createElement('div');
-    helpDiv.innerHTML = `
-        <div style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; 
-                    padding: 10px; border-radius: 5px; font-size: 12px; z-index: 1000;">
-            <strong>🎯 키보드 단축키</strong><br>
-            <span style="color: #4CAF50;">1</span>: 정답 보기 | <span style="color: #2196F3;">2</span>: 다음 문제<br>
-            <span style="color: #FF9800;">A~E</span>: 선택지 | <span style="color: #F44336;">Enter</span>: 제출
-        </div>
-    `;
-    document.body.appendChild(helpDiv);
-    </script>
-    """
-    
-    # JavaScript 컴포넌트 실행하고 결과 받기
-    keyboard_result = components.html(keyboard_js, height=0)
-    
-    # 키보드 입력이 있으면 세션 상태에 저장
-    if keyboard_result:
-        st.session_state.keyboard_action = keyboard_result
-
-def handle_keyboard_action():
-    """키보드 액션 처리"""
-    if st.session_state.keyboard_action:
-        action_data = st.session_state.keyboard_action
-        action = action_data.get('action')
-        value = action_data.get('value')
-        
-        if action == 'show_answer':
-            st.session_state.show_answer = True
-            st.rerun()
-        elif action == 'next_question':
-            handle_next_question()
-        elif action == 'select_choice':
-            st.session_state.selected_choice = value
-            # 시험 모드에서는 바로 답 저장
-            if st.session_state.exam_questions and not st.session_state.exam_submitted:
-                current_q = st.session_state.exam_questions[st.session_state.exam_current_index]
-                st.session_state.exam_answers[current_q['question_num']] = value
-            st.rerun()
-        elif action == 'submit_answer':
-            handle_submit_answer()
-        
-        # 액션 처리 후 초기화
-        st.session_state.keyboard_action = None
-
-def handle_next_question():
-    """다음 문제로 넘어가기"""
-    # 시험 모드인 경우
-    if st.session_state.exam_questions and not st.session_state.exam_submitted:
-        if st.session_state.exam_current_index < len(st.session_state.exam_questions) - 1:
-            st.session_state.exam_current_index += 1
-            st.rerun()
-        return
-    
-    current_question = st.session_state.current_question
-    
-    if not current_question:
-        return
-    
-    # 현재 모드에 따라 다음 문제 생성
-    if current_question.get("quiz_type") == "speed_multiple_choice":
-        generate_speed_quiz_question()
-    elif current_question.get("quiz_type") in ["multiple_choice", "ox"]:
-        # 퀴즈 모드에서 같은 유형으로 다음 문제
-        if current_question["quiz_type"] == "multiple_choice":
-            if current_question["type"] == "hanja":
-                generate_quiz_question("한자 4지선다")
-            else:
-                if "겉뜻" in current_question["question"]:
-                    generate_quiz_question("사자성어 4지선다 (겉뜻)")
-                else:
-                    generate_quiz_question("사자성어 4지선다 (속뜻)")
-        else:
-            if current_question["type"] == "hanja":
-                generate_quiz_question("한자 O/X 퀴즈")
-            else:
-                if "겉뜻" in current_question["question"]:
-                    generate_quiz_question("사자성어 O/X 퀴즈 (겉뜻)")
-                else:
-                    generate_quiz_question("사자성어 O/X 퀴즈 (속뜻)")
-    else:
-        # 암기 연습 모드
-        practice_type = get_practice_type_from_question(current_question)
-        generate_memory_question(practice_type)
-    
-    st.rerun()
-
-def handle_submit_answer():
-    """답 제출 처리"""
-    # 시험 모드인 경우
-    if st.session_state.exam_questions and not st.session_state.exam_submitted:
-        if len(st.session_state.exam_answers) == len(st.session_state.exam_questions):
-            submit_exam()
-            st.rerun()
-        return
-    
-    current_question = st.session_state.current_question
-    selected_choice = st.session_state.selected_choice
-    
-    if not current_question or selected_choice is None:
-        return
-    
-    # 문제 유형에 따라 답 제출 처리
-    if current_question.get("quiz_type") == "speed_multiple_choice":
-        check_speed_quiz_answer(selected_choice, current_question["correct_answer"])
-    elif current_question.get("quiz_type") == "multiple_choice":
-        check_quiz_answer(selected_choice, current_question["correct_answer"])
-    elif current_question.get("quiz_type") == "ox":
-        # O/X는 0,1로 처리
-        ox_answer = "O" if selected_choice == 0 else "X"
-        check_quiz_answer(ox_answer, current_question["correct_answer"])
-    
-    st.session_state.selected_choice = None
-    st.rerun()
 
 def main():
     st.set_page_config(page_title="📚 한자 & 사자성어 학습", page_icon="📚", layout="wide")
-    
-    # 키보드 액션 처리
-    handle_keyboard_action()
     
     # 사이드바 - 메뉴 및 모든 선택 옵션
     with st.sidebar:
@@ -1208,9 +1029,6 @@ def show_home():
     with col6:
         if st.button("📝 시험 보기", use_container_width=True):
             generate_exam()
-    
-    # 키보드 단축키 안내
-    show_keyboard_shortcuts()
 
 def show_memory_practice():
     st.header("📚 암기 연습 모드")
@@ -1291,9 +1109,6 @@ def generate_memory_question(practice_type):
 def show_memory_question():
     question = st.session_state.current_question
     
-    # 키보드 핸들러 추가
-    add_keyboard_handler("memory")
-    
     # 문제 표시 (더 큰 상자)
     st.markdown(f"""
     <div style='font-size: 32px; padding: 40px; background-color: #f0f2f6; 
@@ -1306,11 +1121,11 @@ def show_memory_question():
     # 플래시 카드 형식 - 상단에 버튼 2개
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💡 정답 확인 (키: 1)", use_container_width=True, type="primary"):
+        if st.button("💡 정답 확인", use_container_width=True, type="primary"):
             st.session_state.show_answer = True
     
     with col2:
-        if st.button("⏭️ 다음 문제 (키: 2)", use_container_width=True):
+        if st.button("⏭️ 다음 문제", use_container_width=True):
             practice_type = get_practice_type_from_question(question)
             generate_memory_question(practice_type)
             st.rerun()
@@ -1494,9 +1309,6 @@ def generate_ox_question(quiz_type):
 def show_quiz_question():
     question = st.session_state.current_question
     
-    # 키보드 핸들러 추가
-    add_keyboard_handler("quiz")
-    
     # 문제 표시 (더 큰 상자)
     st.markdown(f"""
     <div style='font-size: 24px; padding: 30px; background-color: #f0f2f6; 
@@ -1509,25 +1321,17 @@ def show_quiz_question():
     if not st.session_state.show_answer:
         if question["quiz_type"] == "multiple_choice":
             # 4지선다
-            # 키보드로 선택된 선택지가 있으면 해당 선택지를 기본값으로 설정
-            default_choice = st.session_state.selected_choice if st.session_state.selected_choice is not None else 0
-            
-            user_answer = st.radio("정답을 선택하세요 (키: A~E):", 
+            user_answer = st.radio("정답을 선택하세요:", 
                                  options=range(len(question["choices"])),
                                  format_func=lambda x: f"{chr(65+x)}. {question['choices'][x]}",
-                                 key="quiz_answer",
-                                 index=default_choice)
+                                 key="quiz_answer")
             
-            # 키보드 선택이 있으면 업데이트
-            if st.session_state.selected_choice is not None:
-                user_answer = st.session_state.selected_choice
-            
-            if st.button("정답 확인 (키: Enter)", use_container_width=True, type="primary"):
+            if st.button("정답 확인", use_container_width=True, type="primary"):
                 check_quiz_answer(user_answer, question["correct_answer"])
                 
         else:
             # O/X 퀴즈
-            st.markdown("**선택하세요 (키: A=O, B=X):**")
+            st.markdown("**선택하세요:**")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("⭕ A. O (맞다)", use_container_width=True, type="primary"):
@@ -1554,7 +1358,7 @@ def show_quiz_question():
         
         st.info(f"설명: {question['explanation']}")
         
-        if st.button("➡️ 다음 문제 (키: 2)", use_container_width=True):
+        if st.button("➡️ 다음 문제", use_container_width=True):
             # 같은 유형의 다음 문제 생성하고 자동으로 화면 새로고침
             if question["quiz_type"] == "multiple_choice":
                 if question["type"] == "hanja":
@@ -1693,9 +1497,6 @@ def show_speed_quiz():
 def show_speed_quiz_question():
     question = st.session_state.current_question
     
-    # 키보드 핸들러 추가
-    add_keyboard_handler("speed")
-    
     # 문제 표시 (더 큰 상자)
     st.markdown(f"""
     <div style='font-size: 36px; padding: 40px; background-color: #ff6b6b; color: white;
@@ -1707,7 +1508,7 @@ def show_speed_quiz_question():
     
     if not st.session_state.show_answer:
         # 선택지들
-        st.markdown("**선택하세요 (키: A~E):**")
+        st.markdown("**선택하세요:**")
         for i, choice in enumerate(question["choices"]):
             key_letter = chr(65+i)  # A, B, C, D, E
             if st.button(f"{key_letter}. {choice}", use_container_width=True, key=f"speed_{i}"):
@@ -1811,9 +1612,6 @@ def show_exam_mode():
         show_exam_question()
 
 def show_exam_question():
-    # 키보드 핸들러 추가
-    add_keyboard_handler("exam")
-    
     # 진행률 표시
     progress = len(st.session_state.exam_answers) / len(st.session_state.exam_questions)
     st.progress(progress)
@@ -1845,14 +1643,8 @@ def show_exam_question():
     answer_key = f"exam_q_{current_q['question_num']}"
     current_answer = st.session_state.exam_answers.get(current_q['question_num'], None)
     
-    # 키보드로 선택된 선택지가 있으면 해당 선택지를 기본값으로 설정
-    if st.session_state.selected_choice is not None:
-        current_answer = st.session_state.selected_choice
-        st.session_state.exam_answers[current_q['question_num']] = st.session_state.selected_choice
-        st.session_state.selected_choice = None  # 선택 후 초기화
-    
     user_answer = st.radio(
-        "정답을 선택하세요 (키: A~E):",
+        "정답을 선택하세요:",
         options=range(len(current_q["choices"])),
         format_func=lambda x: f"{chr(65+x)}. {current_q['choices'][x]}",
         key=answer_key,
@@ -1873,13 +1665,13 @@ def show_exam_question():
     
     with col2:
         if len(st.session_state.exam_answers) == len(st.session_state.exam_questions):
-            if st.button("✅ 시험 제출 (키: Enter)", type="primary"):
+            if st.button("✅ 시험 제출", type="primary"):
                 submit_exam()
                 st.rerun()
     
     with col3:
         if st.session_state.exam_current_index < len(st.session_state.exam_questions) - 1:
-            if st.button("➡️ 다음 문제 (키: 2)"):
+            if st.button("➡️ 다음 문제"):
                 st.session_state.exam_current_index += 1
                 st.rerun()
 
@@ -2177,28 +1969,6 @@ def show_idiom_search():
     # 기본 안내 메시지
     if not hasattr(st.session_state, 'search_term') and not hasattr(st.session_state, 'show_all_idioms'):
         st.info("왼쪽 사이드바에서 검색어를 입력하거나 전체 목록을 확인하세요.")
-
-# 키보드 단축키 안내 표시 함수
-def show_keyboard_shortcuts():
-    """키보드 단축키 안내 표시"""
-    with st.expander("🎯 키보드 단축키 안내", expanded=False):
-        st.markdown("""
-        ### 📝 모든 모드 공통
-        - **1 키**: 정답 보기 (암기 연습 모드)
-        - **2 키**: 다음 문제로 넘어가기
-        
-        ### 🔤 선택지 입력
-        - **A 키**: 1번 선택지 선택
-        - **B 키**: 2번 선택지 선택  
-        - **C 키**: 3번 선택지 선택
-        - **D 키**: 4번 선택지 선택
-        - **E 키**: 5번 선택지 선택
-        
-        ### ⌨️ 기타
-        - **Enter 키**: 답 제출/시험 제출
-        
-        **💡 팁**: 키보드만으로 빠르게 학습할 수 있습니다!
-        """)
 
 if __name__ == "__main__":
     main()
