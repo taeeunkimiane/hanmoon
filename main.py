@@ -843,6 +843,7 @@ IDIOM_DATA = {
         "korean": "사필귀정",
         "outer_meaning": "일은 반드시 바른 곳으로 돌아간다",
         "inner_meaning": "모든 일은 결국에는 반드시 바른 길로 돌아가게 되어 있음"
+    }
 }
 
 # 한자 분석 함수
