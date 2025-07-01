@@ -1037,84 +1037,103 @@ def show_memory_practice():
         show_memory_question()
 
 def generate_memory_question(practice_type):
-    if "한자" in practice_type:
-        hanja, (meaning, reading) = random.choice(list(HANJA_DATA.items()))
-        if practice_type == "한자 → 뜻 맞히기":
-            st.session_state.current_question = {
-                "type": "hanja_to_meaning",
-                "question": hanja,
-                "answer": f"{meaning} ({reading})",
-                "hanja": hanja,
-                "meaning": meaning,
-                "reading": reading
-            }
-        else:  # 뜻 → 한자 맞히기
-            st.session_state.current_question = {
-                "type": "meaning_to_hanja",
-                "question": f"{meaning} ({reading})",
-                "answer": hanja,
-                "hanja": hanja,
-                "meaning": meaning,
-                "reading": reading
-            }
-    else:  # 사자성어
-        idiom, data = random.choice(list(IDIOM_DATA.items()))
-        korean = data["korean"]
-        outer_meaning = data["outer_meaning"]
-        inner_meaning = data["inner_meaning"]
+    try:
+        if "한자" in practice_type:
+            if not HANJA_DATA:
+                st.error("한자 데이터가 없습니다.")
+                return
+                
+            hanja, (meaning, reading) = random.choice(list(HANJA_DATA.items()))
+            if practice_type == "한자 → 뜻 맞히기":
+                st.session_state.current_question = {
+                    "type": "hanja_to_meaning",
+                    "question": hanja,
+                    "answer": f"{meaning} ({reading})",
+                    "hanja": hanja,
+                    "meaning": meaning,
+                    "reading": reading
+                }
+            else:  # 뜻 → 한자 맞히기
+                st.session_state.current_question = {
+                    "type": "meaning_to_hanja",
+                    "question": f"{meaning} ({reading})",
+                    "answer": hanja,
+                    "hanja": hanja,
+                    "meaning": meaning,
+                    "reading": reading
+                }
+        else:  # 사자성어
+            if not IDIOM_DATA:
+                st.error("사자성어 데이터가 없습니다.")
+                return
+                
+            idiom, data = random.choice(list(IDIOM_DATA.items()))
+            korean = data.get("korean", "")
+            outer_meaning = data.get("outer_meaning", "")
+            inner_meaning = data.get("inner_meaning", "")
+            
+            if practice_type == "사자성어 → 겉뜻 맞히기":
+                st.session_state.current_question = {
+                    "type": "idiom_to_outer",
+                    "question": f"{idiom}",
+                    "answer": outer_meaning,
+                    "idiom": idiom,
+                    "korean": korean,
+                    "outer_meaning": outer_meaning,
+                    "inner_meaning": inner_meaning
+                }
+            elif practice_type == "사자성어 → 속뜻 맞히기":
+                st.session_state.current_question = {
+                    "type": "idiom_to_inner",
+                    "question": f"{idiom}",
+                    "answer": inner_meaning,
+                    "idiom": idiom,
+                    "korean": korean,
+                    "outer_meaning": outer_meaning,
+                    "inner_meaning": inner_meaning
+                }
+            elif practice_type == "겉뜻 → 사자성어 맞히기":
+                st.session_state.current_question = {
+                    "type": "outer_to_idiom",
+                    "question": outer_meaning,
+                    "answer": f"{idiom}",
+                    "idiom": idiom,
+                    "korean": korean,
+                    "outer_meaning": outer_meaning,
+                    "inner_meaning": inner_meaning
+                }
+            else:  # 속뜻 → 사자성어 맞히기
+                st.session_state.current_question = {
+                    "type": "inner_to_idiom",
+                    "question": inner_meaning,
+                    "answer": f"{idiom}",
+                    "idiom": idiom,
+                    "korean": korean,
+                    "outer_meaning": outer_meaning,
+                    "inner_meaning": inner_meaning
+                }
         
-        if practice_type == "사자성어 → 겉뜻 맞히기":
-            st.session_state.current_question = {
-                "type": "idiom_to_outer",
-                "question": f"{idiom}",
-                "answer": outer_meaning,
-                "idiom": idiom,
-                "korean": korean,
-                "outer_meaning": outer_meaning,
-                "inner_meaning": inner_meaning
-            }
-        elif practice_type == "사자성어 → 속뜻 맞히기":
-            st.session_state.current_question = {
-                "type": "idiom_to_inner",
-                "question": f"{idiom}",
-                "answer": inner_meaning,
-                "idiom": idiom,
-                "korean": korean,
-                "outer_meaning": outer_meaning,
-                "inner_meaning": inner_meaning
-            }
-        elif practice_type == "겉뜻 → 사자성어 맞히기":
-            st.session_state.current_question = {
-                "type": "outer_to_idiom",
-                "question": outer_meaning,
-                "answer": f"{idiom}",
-                "idiom": idiom,
-                "korean": korean,
-                "outer_meaning": outer_meaning,
-                "inner_meaning": inner_meaning
-            }
-        else:  # 속뜻 → 사자성어 맞히기
-            st.session_state.current_question = {
-                "type": "inner_to_idiom",
-                "question": inner_meaning,
-                "answer": f"{idiom}",
-                "idiom": idiom,
-                "korean": korean,
-                "outer_meaning": outer_meaning,
-                "inner_meaning": inner_meaning
-            }
-    
-    st.session_state.show_answer = False
+        st.session_state.show_answer = False
+        
+    except Exception as e:
+        st.error(f"문제 생성 중 오류가 발생했습니다: {str(e)}")
+        st.session_state.current_question = None
 
 def show_memory_question():
     question = st.session_state.current_question
     
+    # 안전성 체크
+    if not question or not isinstance(question, dict):
+        st.error("문제 데이터가 올바르지 않습니다. 새 문제를 시작해주세요.")
+        return
+    
     # 문제 표시 (더 큰 상자)
+    question_text = question.get('question', '문제를 불러올 수 없습니다.')
     st.markdown(f"""
     <div style='font-size: 32px; padding: 40px; background-color: #f0f2f6; 
                 border-radius: 15px; text-align: center; margin: 20px 0; 
                 border: 2px solid #e1e5e9; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-        {question['question']}
+        {question_text}
     </div>
     """, unsafe_allow_html=True)
     
@@ -1133,39 +1152,48 @@ def show_memory_question():
     # 정답 표시 (정답 확인 버튼을 눌렀을 때만)
     if st.session_state.show_answer:
         st.markdown("### ✅ 정답")
-        st.success(f"정답: {question['answer']}")
+        answer = question.get('answer', '정답을 불러올 수 없습니다.')
+        st.success(f"정답: {answer}")
         
         # 상세 정보 표시
         if "hanja" in question:
             st.markdown("### 📚 상세 정보")
-            st.info(f"한자: {question['hanja']}")
-            st.info(f"뜻: {question['meaning']}")
-            st.info(f"음: {question['reading']}")
+            st.info(f"한자: {question.get('hanja', 'N/A')}")
+            st.info(f"뜻: {question.get('meaning', 'N/A')}")
+            st.info(f"음: {question.get('reading', 'N/A')}")
         elif "idiom" in question:
             st.markdown("### 📚 상세 정보")
-            st.info(f"사자성어: {question['idiom']}")
-            st.info(f"한글: {question['korean']}")
+            st.info(f"사자성어: {question.get('idiom', 'N/A')}")
+            st.info(f"한글: {question.get('korean', 'N/A')}")
             
             # 한자 분석 추가
-            hanja_analysis = analyze_hanja_chars(question['idiom'])
-            st.info(f"한자 분석: {hanja_analysis}")
+            if question.get('idiom'):
+                hanja_analysis = analyze_hanja_chars(question['idiom'])
+                st.info(f"한자 분석: {hanja_analysis}")
             
-            st.info(f"겉뜻: {question['outer_meaning']}")
-            st.info(f"속뜻: {question['inner_meaning']}")
+            st.info(f"겉뜻: {question.get('outer_meaning', 'N/A')}")
+            st.info(f"속뜻: {question.get('inner_meaning', 'N/A')}")
 
 def get_practice_type_from_question(question):
-    if question["type"] == "hanja_to_meaning":
+    if not question or not isinstance(question, dict):
+        return "한자 → 뜻 맞히기"  # 기본값
+    
+    question_type = question.get("type", "")
+    
+    if question_type == "hanja_to_meaning":
         return "한자 → 뜻 맞히기"
-    elif question["type"] == "meaning_to_hanja":
+    elif question_type == "meaning_to_hanja":
         return "뜻 → 한자 맞히기"
-    elif question["type"] == "idiom_to_outer":
+    elif question_type == "idiom_to_outer":
         return "사자성어 → 겉뜻 맞히기"
-    elif question["type"] == "idiom_to_inner":
+    elif question_type == "idiom_to_inner":
         return "사자성어 → 속뜻 맞히기"
-    elif question["type"] == "outer_to_idiom":
+    elif question_type == "outer_to_idiom":
         return "겉뜻 → 사자성어 맞히기"
-    else:
+    elif question_type == "inner_to_idiom":
         return "속뜻 → 사자성어 맞히기"
+    else:
+        return "한자 → 뜻 맞히기"  # 기본값
 
 def show_quiz_mode():
     st.header("🧠 퀴즈 모드")
@@ -1186,61 +1214,87 @@ def generate_quiz_question(quiz_type):
         generate_quiz_question(random_type)
 
 def generate_multiple_choice_question(quiz_type):
-    if "한자" in quiz_type:
-        # 한자 4지선다
-        correct_hanja, (correct_meaning, correct_reading) = random.choice(list(HANJA_DATA.items()))
+    try:
+        if "한자" in quiz_type:
+            if not HANJA_DATA or len(HANJA_DATA) < 4:
+                st.error("한자 데이터가 부족합니다. (최소 4개 필요)")
+                return
+                
+            # 한자 4지선다
+            correct_hanja, (correct_meaning, correct_reading) = random.choice(list(HANJA_DATA.items()))
+            
+            # 오답 선택지 생성
+            available_choices = [item for item in HANJA_DATA.items() if item[0] != correct_hanja]
+            if len(available_choices) < 3:
+                st.error("한자 데이터가 부족합니다.")
+                return
+                
+            wrong_choices = random.sample(available_choices, 3)
+            
+            choices = [f"{correct_meaning} ({correct_reading})"]
+            for _, (meaning, reading) in wrong_choices:
+                choices.append(f"{meaning} ({reading})")
+            
+            random.shuffle(choices)
+            correct_answer = choices.index(f"{correct_meaning} ({correct_reading})")
+            
+            st.session_state.current_question = {
+                "quiz_type": "multiple_choice",
+                "type": "hanja",
+                "question": f"다음 한자의 뜻은? {correct_hanja}",
+                "choices": choices,
+                "correct_answer": correct_answer,
+                "explanation": f"한자 '{correct_hanja}'의 뜻은 '{correct_meaning}'이고 음은 '{correct_reading}'입니다."
+            }
+        else:
+            if not IDIOM_DATA or len(IDIOM_DATA) < 4:
+                st.error("사자성어 데이터가 부족합니다. (최소 4개 필요)")
+                return
+                
+            # 사자성어 4지선다
+            correct_idiom, data = random.choice(list(IDIOM_DATA.items()))
+            correct_korean = data.get("korean", "")
+            
+            if "겉뜻" in quiz_type:
+                correct_meaning = data.get("outer_meaning", "")
+                # 다른 사자성어의 겉뜻들
+                available_meanings = [item[1].get("outer_meaning", "") for item in IDIOM_DATA.items() if item[0] != correct_idiom and item[1].get("outer_meaning")]
+                if len(available_meanings) < 3:
+                    st.error("사자성어 겉뜻 데이터가 부족합니다.")
+                    return
+                wrong_choices = random.sample(available_meanings, 3)
+                question_text = f"다음 사자성어의 겉뜻은? {correct_idiom}"
+            else:  # 속뜻
+                correct_meaning = data.get("inner_meaning", "")
+                # 다른 사자성어의 속뜻들
+                available_meanings = [item[1].get("inner_meaning", "") for item in IDIOM_DATA.items() if item[0] != correct_idiom and item[1].get("inner_meaning")]
+                if len(available_meanings) < 3:
+                    st.error("사자성어 속뜻 데이터가 부족합니다.")
+                    return
+                wrong_choices = random.sample(available_meanings, 3)
+                question_text = f"다음 사자성어의 속뜻은? {correct_idiom}"
+            
+            choices = [correct_meaning] + wrong_choices
+            random.shuffle(choices)
+            correct_answer = choices.index(correct_meaning)
+            
+            # 한자 분석 추가
+            hanja_analysis = analyze_hanja_chars(correct_idiom)
+            
+            st.session_state.current_question = {
+                "quiz_type": "multiple_choice",
+                "type": "idiom",
+                "question": question_text,
+                "choices": choices,
+                "correct_answer": correct_answer,
+                "explanation": f"사자성어 '{correct_idiom}({correct_korean})'의 한자 분석: {hanja_analysis}\n겉뜻: {data.get('outer_meaning', 'N/A')}\n속뜻: {data.get('inner_meaning', 'N/A')}"
+            }
         
-        # 오답 선택지 생성
-        wrong_choices = random.sample([item for item in HANJA_DATA.items() if item[0] != correct_hanja], 3)
+        st.session_state.show_answer = False
         
-        choices = [f"{correct_meaning} ({correct_reading})"]
-        for _, (meaning, reading) in wrong_choices:
-            choices.append(f"{meaning} ({reading})")
-        
-        random.shuffle(choices)
-        correct_answer = choices.index(f"{correct_meaning} ({correct_reading})")
-        
-        st.session_state.current_question = {
-            "quiz_type": "multiple_choice",
-            "type": "hanja",
-            "question": f"다음 한자의 뜻은? {correct_hanja}",
-            "choices": choices,
-            "correct_answer": correct_answer,
-            "explanation": f"한자 '{correct_hanja}'의 뜻은 '{correct_meaning}'이고 음은 '{correct_reading}'입니다."
-        }
-    else:
-        # 사자성어 4지선다
-        correct_idiom, data = random.choice(list(IDIOM_DATA.items()))
-        correct_korean = data["korean"]
-        
-        if "겉뜻" in quiz_type:
-            correct_meaning = data["outer_meaning"]
-            # 다른 사자성어의 겉뜻들
-            wrong_choices = random.sample([item[1]["outer_meaning"] for item in IDIOM_DATA.items() if item[0] != correct_idiom], 3)
-            question_text = f"다음 사자성어의 겉뜻은? {correct_idiom}"
-        else:  # 속뜻
-            correct_meaning = data["inner_meaning"]
-            # 다른 사자성어의 속뜻들
-            wrong_choices = random.sample([item[1]["inner_meaning"] for item in IDIOM_DATA.items() if item[0] != correct_idiom], 3)
-            question_text = f"다음 사자성어의 속뜻은? {correct_idiom}"
-        
-        choices = [correct_meaning] + wrong_choices
-        random.shuffle(choices)
-        correct_answer = choices.index(correct_meaning)
-        
-        # 한자 분석 추가
-        hanja_analysis = analyze_hanja_chars(correct_idiom)
-        
-        st.session_state.current_question = {
-            "quiz_type": "multiple_choice",
-            "type": "idiom",
-            "question": question_text,
-            "choices": choices,
-            "correct_answer": correct_answer,
-            "explanation": f"사자성어 '{correct_idiom}({correct_korean})'의 한자 분석: {hanja_analysis}\n겉뜻: {data['outer_meaning']}\n속뜻: {data['inner_meaning']}"
-        }
-    
-    st.session_state.show_answer = False
+    except Exception as e:
+        st.error(f"퀴즈 생성 중 오류가 발생했습니다: {str(e)}")
+        st.session_state.current_question = None
 
 def generate_ox_question(quiz_type):
     if "한자" in quiz_type:
@@ -1309,25 +1363,37 @@ def generate_ox_question(quiz_type):
 def show_quiz_question():
     question = st.session_state.current_question
     
+    # 안전성 체크
+    if not question or not isinstance(question, dict):
+        st.error("문제 데이터가 올바르지 않습니다. 새 퀴즈를 시작해주세요.")
+        return
+    
     # 문제 표시 (더 큰 상자)
+    question_text = question.get('question', '문제를 불러올 수 없습니다.')
     st.markdown(f"""
     <div style='font-size: 24px; padding: 30px; background-color: #f0f2f6; 
                 border-radius: 15px; margin: 20px 0; 
                 border: 2px solid #e1e5e9; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-        {question['question']}
+        {question_text}
     </div>
     """, unsafe_allow_html=True)
     
     if not st.session_state.show_answer:
-        if question["quiz_type"] == "multiple_choice":
+        quiz_type = question.get("quiz_type", "")
+        if quiz_type == "multiple_choice":
             # 4지선다
-            user_answer = st.radio("정답을 선택하세요:", 
-                                 options=range(len(question["choices"])),
-                                 format_func=lambda x: f"{chr(65+x)}. {question['choices'][x]}",
-                                 key="quiz_answer")
-            
-            if st.button("정답 확인", use_container_width=True, type="primary"):
-                check_quiz_answer(user_answer, question["correct_answer"])
+            choices = question.get("choices", [])
+            if choices:
+                user_answer = st.radio("정답을 선택하세요:", 
+                                     options=range(len(choices)),
+                                     format_func=lambda x: f"{chr(65+x)}. {choices[x]}",
+                                     key="quiz_answer")
+                
+                if st.button("정답 확인", use_container_width=True, type="primary"):
+                    correct_answer = question.get("correct_answer", 0)
+                    check_quiz_answer(user_answer, correct_answer)
+            else:
+                st.error("선택지 데이터가 없습니다.")
                 
         else:
             # O/X 퀴즈
@@ -1335,10 +1401,12 @@ def show_quiz_question():
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("⭕ A. O (맞다)", use_container_width=True, type="primary"):
-                    check_quiz_answer("O", question["correct_answer"])
+                    correct_answer = question.get("correct_answer", "O")
+                    check_quiz_answer("O", correct_answer)
             with col2:
                 if st.button("❌ B. X (틀리다)", use_container_width=True):
-                    check_quiz_answer("X", question["correct_answer"])
+                    correct_answer = question.get("correct_answer", "O")
+                    check_quiz_answer("X", correct_answer)
     
     # 정답 표시
     if st.session_state.show_answer:
@@ -1348,33 +1416,41 @@ def show_quiz_question():
             else:
                 st.error("❌ 틀렸습니다!")
                 # 틀린 문제를 복습 노트에 추가
+                user_answer = getattr(st.session_state, 'user_quiz_answer', 'N/A')
+                correct_answer = question.get("correct_answer", 'N/A')
+                explanation = question.get("explanation", '설명이 없습니다.')
+                
                 st.session_state.wrong_answers.append({
-                    "question": question["question"],
-                    "user_answer": st.session_state.user_quiz_answer,
-                    "correct_answer": question["correct_answer"],
-                    "explanation": question["explanation"],
+                    "question": question_text,
+                    "user_answer": user_answer,
+                    "correct_answer": correct_answer,
+                    "explanation": explanation,
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
         
-        st.info(f"설명: {question['explanation']}")
+        explanation = question.get("explanation", "설명이 없습니다.")
+        st.info(f"설명: {explanation}")
         
         if st.button("➡️ 다음 문제", use_container_width=True):
             # 같은 유형의 다음 문제 생성하고 자동으로 화면 새로고침
-            if question["quiz_type"] == "multiple_choice":
-                if question["type"] == "hanja":
+            quiz_type = question.get("quiz_type", "multiple_choice")
+            question_type = question.get("type", "hanja")
+            
+            if quiz_type == "multiple_choice":
+                if question_type == "hanja":
                     generate_quiz_question("한자 4지선다")
                 else:
                     # 현재 문제에서 겉뜻/속뜻 유형 파악
-                    if "겉뜻" in question["question"]:
+                    if "겉뜻" in question_text:
                         generate_quiz_question("사자성어 4지선다 (겉뜻)")
                     else:
                         generate_quiz_question("사자성어 4지선다 (속뜻)")
             else:
-                if question["type"] == "hanja":
+                if question_type == "hanja":
                     generate_quiz_question("한자 O/X 퀴즈")
                 else:
                     # 현재 문제에서 겉뜻/속뜻 유형 파악
-                    if "겉뜻" in question["question"]:
+                    if "겉뜻" in question_text:
                         generate_quiz_question("사자성어 O/X 퀴즈 (겉뜻)")
                     else:
                         generate_quiz_question("사자성어 O/X 퀴즈 (속뜻)")
@@ -1497,23 +1573,34 @@ def show_speed_quiz():
 def show_speed_quiz_question():
     question = st.session_state.current_question
     
+    # 안전성 체크
+    if not question or not isinstance(question, dict):
+        st.error("문제 데이터가 올바르지 않습니다. 스피드 퀴즈를 다시 시작해주세요.")
+        return
+    
     # 문제 표시 (더 큰 상자)
+    question_text = question.get('question', '문제를 불러올 수 없습니다.')
     st.markdown(f"""
     <div style='font-size: 36px; padding: 40px; background-color: #ff6b6b; color: white;
                 border-radius: 15px; text-align: center; margin: 20px 0; 
                 border: 3px solid #ff5252; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'>
-        {question['question']}
+        {question_text}
     </div>
     """, unsafe_allow_html=True)
     
     if not st.session_state.show_answer:
         # 선택지들
         st.markdown("**선택하세요:**")
-        for i, choice in enumerate(question["choices"]):
-            key_letter = chr(65+i)  # A, B, C, D, E
-            if st.button(f"{key_letter}. {choice}", use_container_width=True, key=f"speed_{i}"):
-                check_speed_quiz_answer(i, question["correct_answer"])
-                st.rerun()
+        choices = question.get("choices", [])
+        if choices:
+            for i, choice in enumerate(choices):
+                key_letter = chr(65+i)  # A, B, C, D, E
+                if st.button(f"{key_letter}. {choice}", use_container_width=True, key=f"speed_{i}"):
+                    correct_answer = question.get("correct_answer", 0)
+                    check_speed_quiz_answer(i, correct_answer)
+                    st.rerun()
+        else:
+            st.error("선택지 데이터가 없습니다.")
     
     # 정답 표시
     if st.session_state.show_answer:
@@ -1523,7 +1610,8 @@ def show_speed_quiz_question():
             else:
                 st.error("❌ 틀림!")
         
-        st.info(f"설명: {question['explanation']}")
+        explanation = question.get("explanation", "설명이 없습니다.")
+        st.info(f"설명: {explanation}")
         
         # 자동으로 다음 문제로 (1초 후)
         time.sleep(1)
@@ -1612,6 +1700,15 @@ def show_exam_mode():
         show_exam_question()
 
 def show_exam_question():
+    # 안전성 체크
+    if not st.session_state.exam_questions:
+        st.error("시험 문제가 없습니다. 새 시험을 시작해주세요.")
+        return
+        
+    if st.session_state.exam_current_index >= len(st.session_state.exam_questions):
+        st.error("잘못된 문제 인덱스입니다.")
+        return
+    
     # 진행률 표시
     progress = len(st.session_state.exam_answers) / len(st.session_state.exam_questions)
     st.progress(progress)
@@ -1620,15 +1717,23 @@ def show_exam_question():
     # 현재 문제 표시
     current_q = st.session_state.exam_questions[st.session_state.exam_current_index]
     
-    st.markdown(f"### 문제 {current_q['question_num']}")
+    if not isinstance(current_q, dict):
+        st.error("문제 데이터가 올바르지 않습니다.")
+        return
+    
+    question_num = current_q.get('question_num', st.session_state.exam_current_index + 1)
+    st.markdown(f"### 문제 {question_num}")
     
     # 문제 표시 (더 큰 상자)
-    if current_q["type"] == "idiom_to_inner":
+    question_type = current_q.get("type", "")
+    question_main = current_q.get("question", "문제를 불러올 수 없습니다.")
+    
+    if question_type == "idiom_to_inner":
         question_text = f"다음 사자성어의 속뜻은?"
-        question_main = current_q["question"]
-    else:
+    elif question_type == "inner_to_idiom":
         question_text = f"다음 속뜻에 해당하는 사자성어는?"
-        question_main = current_q["question"]
+    else:
+        question_text = f"다음 문제를 풀어주세요:"
     
     st.markdown(f"**{question_text}**")
     st.markdown(f"""
@@ -1640,19 +1745,24 @@ def show_exam_question():
     """, unsafe_allow_html=True)
     
     # 선택지
-    answer_key = f"exam_q_{current_q['question_num']}"
-    current_answer = st.session_state.exam_answers.get(current_q['question_num'], None)
+    choices = current_q.get("choices", [])
+    if not choices:
+        st.error("선택지 데이터가 없습니다.")
+        return
+    
+    answer_key = f"exam_q_{question_num}"
+    current_answer = st.session_state.exam_answers.get(question_num, None)
     
     user_answer = st.radio(
         "정답을 선택하세요:",
-        options=range(len(current_q["choices"])),
-        format_func=lambda x: f"{chr(65+x)}. {current_q['choices'][x]}",
+        options=range(len(choices)),
+        format_func=lambda x: f"{chr(65+x)}. {choices[x]}",
         key=answer_key,
         index=current_answer if current_answer is not None else 0
     )
     
     # 답 저장
-    st.session_state.exam_answers[current_q['question_num']] = user_answer
+    st.session_state.exam_answers[question_num] = user_answer
     
     # 네비게이션 버튼
     col1, col2, col3 = st.columns(3)
@@ -1677,13 +1787,20 @@ def show_exam_question():
 
 def submit_exam():
     """시험 제출 및 채점"""
+    if not st.session_state.exam_questions:
+        st.error("시험 문제가 없습니다.")
+        return
+    
     correct_count = 0
     results = []
     
     for question in st.session_state.exam_questions:
-        question_num = question["question_num"]
+        if not isinstance(question, dict):
+            continue
+            
+        question_num = question.get("question_num", 0)
         user_answer = st.session_state.exam_answers.get(question_num)
-        correct_answer = question["correct_answer"]
+        correct_answer = question.get("correct_answer", 0)
         
         is_correct = user_answer == correct_answer
         if is_correct:
@@ -1697,10 +1814,11 @@ def submit_exam():
             "is_correct": is_correct
         })
     
+    total_questions = len(st.session_state.exam_questions)
     st.session_state.exam_results = {
         "score": correct_count,
-        "total": len(st.session_state.exam_questions),
-        "percentage": (correct_count / len(st.session_state.exam_questions)) * 100,
+        "total": total_questions,
+        "percentage": (correct_count / total_questions) * 100 if total_questions > 0 else 0,
         "results": results
     }
     
