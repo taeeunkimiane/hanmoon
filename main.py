@@ -434,7 +434,7 @@ IDIOM_DATA = {
         "outer_meaning": "닭을 빌려 타고 들어간다",
         "inner_meaning": "손님을 박대하는 것을 빗대어 이르는 말"
     },
-    "勝甲盜賊": {
+    "膝甲盜賊": {
         "korean": "슬갑도적",
         "outer_meaning": "슬갑(방한구-무릎가리개)을 머리에 쓴 도적",
         "inner_meaning": "남의 글이나 저술을 베껴 마치 제가 지은 것처럼 하는 사람"
