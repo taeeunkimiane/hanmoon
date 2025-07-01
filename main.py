@@ -849,17 +849,23 @@ IDIOM_DATA = {
 # 한자 분석 함수
 def analyze_hanja_chars(hanja_string):
     """사자성어의 각 한자를 분석하여 뜻과 음을 표시"""
-    chars = list(hanja_string)
-    analysis = []
+    if not hanja_string or not isinstance(hanja_string, str):
+        return "분석할 수 없습니다"
     
-    for char in chars:
-        if char in HANJA_DATA:
-            meaning, sound = HANJA_DATA[char]
-            analysis.append(f"{meaning}({char})")
-        else:
-            analysis.append(f"({char})")
-    
-    return " ".join(analysis)
+    try:
+        chars = list(hanja_string)
+        analysis = []
+        
+        for char in chars:
+            if char in HANJA_DATA:
+                meaning, sound = HANJA_DATA[char]
+                analysis.append(f"{meaning}({char})")
+            else:
+                analysis.append(f"({char})")
+        
+        return " ".join(analysis)
+    except Exception as e:
+        return "분석 중 오류 발생"
 
 # 세션 상태 초기화
 if 'wrong_answers' not in st.session_state:
@@ -2082,9 +2088,12 @@ def submit_exam():
         if is_correct:
             correct_count += 1
         
+        # 안전하게 복사해서 저장
+        safe_question = dict(question)  # 딕셔너리 복사
+        
         results.append({
             "question_num": question_num,
-            "question": question,
+            "question": safe_question,
             "user_answer": user_answer,
             "correct_answer": correct_answer,
             "is_correct": is_correct
