@@ -397,15 +397,15 @@ IDIOM_DATA = {
     "三水甲山": {
         "korean": "삼수갑산",
         "outer_meaning": "함경도의 삼수와 갑산",
-        "inner_meaning": "매우 힘들고 험난한 곳으로 가거나 어려운 지경에 이름(나중에야 삼수갑산을 갈지라도 최악의 경우를 각오하고 자기 하고 싶은 대로 어떤일을 단행할때 쓰는 말"
+        "inner_meaning": "매우 힘들고 험난한 곳으로 가거나 어려운 지경에 이름"
     },
     "三馬太守": {
         "korean": "삼마태수",
         "outer_meaning": "세마리의 말만 타고 행차하는 수령",
-        "inner_meaning": "재물을 탐하지 않는 청렴하고 결백한 관리"
+        "inner_meaning": "여러 사람이 한 자리를 놓고 다툼"
     },
     "鷄卵有骨": {
-        "korean": "계란유골",
+        "korean": "계간유골",
         "outer_meaning": "달걀이 곯았다",
         "inner_meaning": "운수가 나쁜 사람은 모처럼 좋은 기회를 만나도 역시 일이 잘 안됨"
     },
@@ -434,7 +434,7 @@ IDIOM_DATA = {
         "outer_meaning": "닭을 빌려 타고 들어간다",
         "inner_meaning": "손님을 박대하는 것을 빗대어 이르는 말"
     },
-    "膝甲盜賊": {
+    "勝甲盜賊": {
         "korean": "슬갑도적",
         "outer_meaning": "슬갑(방한구-무릎가리개)을 머리에 쓴 도적",
         "inner_meaning": "남의 글이나 저술을 베껴 마치 제가 지은 것처럼 하는 사람"
@@ -504,8 +504,8 @@ IDIOM_DATA = {
         "outer_meaning": "흥청거리며 망청거린다",
         "inner_meaning": "돈이나 물건을 함부로 쓰며 마음껏 즐기는 모양"
     },
-    "櫟木櫃": {
-        "korean": "노목궤",
+    "櫟木槁": {
+        "korean": "노목계",
         "outer_meaning": "상수리나무가 마른다",
         "inner_meaning": "조금도 융통성이 없는 미련한 사람"
     },
@@ -634,16 +634,6 @@ IDIOM_DATA = {
         "outer_meaning": "예절과 의리와 청렴과 부끄러움",
         "inner_meaning": "예절, 의리, 청렴, 부끄러움을 아는 태도"
     },
-    "勿謂今日不學 而有來日 / 勿謂今年不學 而有來年": {
-        "korean": "무위금일불학 이유래일 하고 / 무위금년불학 이유래년 하라",
-        "outer_meaning": "오늘 배우지 않고서 내일이 있다고 말하지 말고, 올해 배우지 않고서, 내년이 있다고 말하지 말라 ",
-        "inner_meaning": ""
-    },
-    "讀書 / 必整襟齊容 / 專心易氣 / 毋生雜念 / 毋主先入": {
-        "korean": "독서 에 / 필정금속용 하고 / 전심이기 하며 / 무생잡념 하라 / 무주선입 하라",
-        "outer_meaning": "글을 읽음에 반드시 옷깃을 단정히하고 용모를 엄숙히 하며 마음을 집중하고 기운을 평안하게 하고, 잠념을 생기게 하지 말고, 선입견을 주로 하지 마라",
-        "inner_meaning": ""
-    },
     "一心同體": {
         "korean": "일심동체",
         "outer_meaning": "한 마음 같은 몸",
@@ -653,16 +643,6 @@ IDIOM_DATA = {
         "korean": "이구동성",
         "outer_meaning": "다른 입으로 같은 소리",
         "inner_meaning": "여러 사람의 말이 한결같음"
-    },
-    "滿招損 / 謙受益": {
-        "korean": "만초손 이요 / 검수익 이라",
-        "outer_meaning": "교만을 손해를 부르고, 겸손은 이익을 받는다",
-        "inner_meaning": ""
-    },
-    "欲勝人者 必先自勝 / 欲論人者 必先自論": {
-        "korean": "욕승인자는 필선자승 하고 / 욕론인자는 필선자론 이니라",
-        "outer_meaning": "남을 이기고자 하는 사람은 반드시 먼저 스스로를 이겨야하고 남을 논하고자 하는 사람은 반드시 먼저 스스로를 논해야한다",
-        "inner_meaning": ""
     },
     "渾然一體": {
         "korean": "혼연일체",
@@ -886,6 +866,8 @@ if 'exam_submitted' not in st.session_state:
     st.session_state.exam_submitted = False
 if 'exam_results' not in st.session_state:
     st.session_state.exam_results = None
+if 'exam_type' not in st.session_state:
+    st.session_state.exam_type = 'type1'
 if 'review_list' not in st.session_state:
     st.session_state.review_list = []
 
@@ -917,7 +899,8 @@ def main():
                 "사자성어 → 겉뜻 맞히기",
                 "사자성어 → 속뜻 맞히기",
                 "겉뜻 → 사자성어 맞히기",
-                "속뜻 → 사자성어 맞히기"
+                "속뜻 → 사자성어 맞히기",
+                "한글뜻 → 사자성어 맞히기"
             ])
             
             if st.button("🎯 새 문제 시작", use_container_width=True):
@@ -934,6 +917,7 @@ def main():
                 "한자 4지선다",
                 "사자성어 4지선다 (겉뜻)", 
                 "사자성어 4지선다 (속뜻)",
+                "한글뜻 → 사자성어 4지선다",
                 "한자 O/X 퀴즈",
                 "사자성어 O/X 퀴즈 (겉뜻)",
                 "사자성어 O/X 퀴즈 (속뜻)",
@@ -959,8 +943,16 @@ def main():
         # 시험 모드 설정
         elif mode == "📝 시험 모드":
             st.subheader("📝 시험 설정")
+            exam_type = st.selectbox("시험 유형 선택", [
+                "Type 1: 20문제 (사자성어 중심)",
+                "Type 2: 50문제 (한자+사자성어 혼합)"
+            ])
+            
             if st.button("📝 새 시험 시작", use_container_width=True):
-                generate_exam()
+                if "Type 1" in exam_type:
+                    generate_exam(exam_type="type1")
+                else:
+                    generate_exam(exam_type="type2")
             
             if st.button("🔄 초기화", use_container_width=True):
                 reset_exam()
@@ -1020,16 +1012,20 @@ def show_home():
         - 한자 → 뜻 맞히기
         - 뜻 → 한자 맞히기
         - 사자성어 → 뜻 맞히기
+        - 한글뜻 → 사자성어 맞히기
         
         **🧠 퀴즈 모드**
         - 4지선다 퀴즈
         - O/X 퀴즈
+        - 한글뜻 → 사자성어 퀴즈
         
         **⚡ 스피드 퀴즈**
         - 빠른 속도의 연속 퀴즈
         
         **📝 시험 모드**
-        - 사자성어 20문제 시험
+        - Type 1: 20문제 (사자성어 중심)
+        - Type 2: 50문제 (한자+사자성어 혼합)
+        - 5가지 유형 혼합 출제
         - 점수 및 분석 제공
         """)
     
@@ -1047,8 +1043,18 @@ def show_home():
         if st.button("⚡ 스피드 퀴즈", use_container_width=True):
             start_speed_quiz()
     with col6:
-        if st.button("📝 시험 보기", use_container_width=True):
-            generate_exam()
+        if st.button("📝 시험 (Type1)", use_container_width=True):
+            generate_exam(exam_type="type1")
+    
+    # Type2 시험을 위한 추가 버튼
+    st.markdown("### 🔥 고급 시험")
+    col7, col8 = st.columns(2)
+    with col7:
+        if st.button("📝 시험 Type1 (20문제 - 사자성어 중심)", use_container_width=True):
+            generate_exam(exam_type="type1")
+    with col8:
+        if st.button("📝 시험 Type2 (50문제 - 한자+사자성어)", use_container_width=True):
+            generate_exam(exam_type="type2")
 
 def show_memory_practice():
     st.header("📚 암기 연습 모드")
@@ -1122,10 +1128,20 @@ def generate_memory_question(practice_type):
                     "outer_meaning": outer_meaning,
                     "inner_meaning": inner_meaning
                 }
-            else:  # 속뜻 → 사자성어 맞히기
+            elif practice_type == "속뜻 → 사자성어 맞히기":
                 st.session_state.current_question = {
                     "type": "inner_to_idiom",
                     "question": inner_meaning,
+                    "answer": f"{idiom}",
+                    "idiom": idiom,
+                    "korean": korean,
+                    "outer_meaning": outer_meaning,
+                    "inner_meaning": inner_meaning
+                }
+            else:  # 한글뜻 → 사자성어 맞히기
+                st.session_state.current_question = {
+                    "type": "korean_to_idiom",
+                    "question": korean,
                     "answer": f"{idiom}",
                     "idiom": idiom,
                     "korean": korean,
@@ -1212,6 +1228,8 @@ def get_practice_type_from_question(question):
         return "겉뜻 → 사자성어 맞히기"
     elif question_type == "inner_to_idiom":
         return "속뜻 → 사자성어 맞히기"
+    elif question_type == "korean_to_idiom":
+        return "한글뜻 → 사자성어 맞히기"
     else:
         return "한자 → 뜻 맞히기"  # 기본값
 
@@ -1228,14 +1246,14 @@ def generate_quiz_question(quiz_type):
         generate_ox_question(quiz_type)
     else:  # 혼합 랜덤
         random_type = random.choice([
-            "한자 4지선다", "사자성어 4지선다 (겉뜻)", "사자성어 4지선다 (속뜻)",
+            "한자 4지선다", "사자성어 4지선다 (겉뜻)", "사자성어 4지선다 (속뜻)", "한글뜻 → 사자성어 4지선다",
             "한자 O/X 퀴즈", "사자성어 O/X 퀴즈 (겉뜻)", "사자성어 O/X 퀴즈 (속뜻)"
         ])
         generate_quiz_question(random_type)
 
 def generate_multiple_choice_question(quiz_type):
     try:
-        if "한자" in quiz_type:
+        if "한자" in quiz_type and "한글뜻" not in quiz_type:
             if not HANJA_DATA or len(HANJA_DATA) < 4:
                 st.error("한자 데이터가 부족합니다. (최소 4개 필요)")
                 return
@@ -1266,6 +1284,40 @@ def generate_multiple_choice_question(quiz_type):
                 "correct_answer": correct_answer,
                 "explanation": f"한자 '{correct_hanja}'의 뜻은 '{correct_meaning}'이고 음은 '{correct_reading}'입니다."
             }
+        
+        elif "한글뜻 → 사자성어" in quiz_type:
+            if not IDIOM_DATA or len(IDIOM_DATA) < 4:
+                st.error("사자성어 데이터가 부족합니다. (최소 4개 필요)")
+                return
+                
+            # 한글뜻 → 사자성어 4지선다
+            correct_idiom, data = random.choice(list(IDIOM_DATA.items()))
+            correct_korean = data.get("korean", "")
+            
+            # 다른 사자성어들
+            available_idioms = [item[0] for item in IDIOM_DATA.items() if item[0] != correct_idiom]
+            if len(available_idioms) < 3:
+                st.error("사자성어 데이터가 부족합니다.")
+                return
+                
+            wrong_choices = random.sample(available_idioms, 3)
+            
+            choices = [correct_idiom] + wrong_choices
+            random.shuffle(choices)
+            correct_answer = choices.index(correct_idiom)
+            
+            # 한자 분석 추가
+            hanja_analysis = analyze_hanja_chars(correct_idiom)
+            
+            st.session_state.current_question = {
+                "quiz_type": "multiple_choice",
+                "type": "korean_to_idiom",
+                "question": f"다음 한글 뜻에 해당하는 사자성어는? '{correct_korean}'",
+                "choices": choices,
+                "correct_answer": correct_answer,
+                "explanation": f"사자성어 '{correct_idiom}({correct_korean})'의 한자 분석: {hanja_analysis}\n겉뜻: {data.get('outer_meaning', 'N/A')}\n속뜻: {data.get('inner_meaning', 'N/A')}"
+            }
+        
         else:
             if not IDIOM_DATA or len(IDIOM_DATA) < 4:
                 st.error("사자성어 데이터가 부족합니다. (최소 4개 필요)")
@@ -1459,6 +1511,8 @@ def show_quiz_question():
             if quiz_type == "multiple_choice":
                 if question_type == "hanja":
                     generate_quiz_question("한자 4지선다")
+                elif question_type == "korean_to_idiom":
+                    generate_quiz_question("한글뜻 → 사자성어 4지선다")
                 else:
                     # 현재 문제에서 겉뜻/속뜻 유형 파악
                     if "겉뜻" in question_text:
@@ -1507,7 +1561,7 @@ def reset_speed_quiz():
 
 def generate_speed_quiz_question():
     # 랜덤하게 한자 또는 사자성어 문제 생성
-    question_type = random.choice(["hanja", "idiom_outer", "idiom_inner"])
+    question_type = random.choice(["hanja", "idiom_outer", "idiom_inner", "korean_to_idiom"])
     
     if question_type == "hanja":
         hanja, (meaning, reading) = random.choice(list(HANJA_DATA.items()))
@@ -1528,6 +1582,24 @@ def generate_speed_quiz_question():
             "choices": choices,
             "correct_answer": correct_answer,
             "explanation": f"한자 '{hanja}'의 뜻은 '{meaning}'({reading})입니다."
+        }
+    
+    elif question_type == "korean_to_idiom":
+        idiom, data = random.choice(list(IDIOM_DATA.items()))
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[0] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [idiom] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(idiom)
+        
+        st.session_state.current_question = {
+            "quiz_type": "speed_multiple_choice",
+            "type": "korean_to_idiom",
+            "question": f"{data['korean']}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "explanation": f"'{data['korean']}'에 해당하는 사자성어는 '{idiom}'입니다. 겉뜻: {data['outer_meaning']}, 속뜻: {data['inner_meaning']}"
         }
     
     elif question_type == "idiom_outer":
@@ -1649,19 +1721,27 @@ def check_speed_quiz_answer(user_answer, correct_answer):
         st.session_state.speed_quiz_result = False
 
 # 시험 모드 기능들
-def generate_exam():
-    """20문제 시험 생성 (사자성어 속뜻 맞추기 10문제 + 속뜻으로 사자성어 맞추기 10문제)"""
+def generate_exam(exam_type="type1"):
+    """시험 생성 - Type1: 20문제, Type2: 50문제"""
     st.session_state.exam_questions = []
     st.session_state.exam_current_index = 0
     st.session_state.exam_answers = {}
     st.session_state.exam_submitted = False
     st.session_state.exam_results = None
+    st.session_state.exam_type = exam_type
     
+    if exam_type == "type1":
+        generate_exam_type1()
+    else:
+        generate_exam_type2()
+
+def generate_exam_type1():
+    """Type1: 20문제 시험 (사자성어 중심)"""
     # 사자성어 20개 선택
     selected_idioms = random.sample(list(IDIOM_DATA.items()), 20)
     
-    # 1-10번: 사자성어 → 속뜻 맞추기 (5지선다)
-    for i in range(10):
+    # 1-5번: 사자성어 → 속뜻 맞추기 (5지선다)
+    for i in range(5):
         idiom, data = selected_idioms[i]
         
         # 5지선다 생성
@@ -1680,8 +1760,8 @@ def generate_exam():
             "data": data
         })
     
-    # 11-20번: 속뜻 → 사자성어 맞추기 (5지선다)
-    for i in range(10, 20):
+    # 6-10번: 속뜻 → 사자성어 맞추기 (5지선다)
+    for i in range(5, 10):
         idiom, data = selected_idioms[i]
         
         # 5지선다 생성
@@ -1694,6 +1774,156 @@ def generate_exam():
             "question_num": i + 1,
             "type": "inner_to_idiom",
             "question": data["inner_meaning"],
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+    
+    # 11-15번: 한글뜻 → 사자성어 맞추기 (5지선다)
+    for i in range(10, 15):
+        idiom, data = selected_idioms[i]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[0] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [idiom] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(idiom)
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "korean_to_idiom",
+            "question": data["korean"],
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+    
+    # 16-20번: 사자성어 → 겉뜻 맞추기 (5지선다)
+    for i in range(15, 20):
+        idiom, data = selected_idioms[i]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[1]["outer_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [data["outer_meaning"]] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(data["outer_meaning"])
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "idiom_to_outer",
+            "question": f"{idiom}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+
+def generate_exam_type2():
+    """Type2: 50문제 시험 (한자+사자성어 혼합)"""
+    # 한자 10개, 사자성어 40개 선택
+    selected_hanja = random.sample(list(HANJA_DATA.items()), 10)
+    selected_idioms = random.sample(list(IDIOM_DATA.items()), 40)
+    
+    # 1-10번: 한자 → 뜻 맞추기 (5지선다)
+    for i in range(10):
+        hanja, (meaning, reading) = selected_hanja[i]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[1] for item in HANJA_DATA.items() if item[0] != hanja], 4)
+        choices = [f"{meaning} ({reading})"]
+        for m, r in wrong_choices:
+            choices.append(f"{m} ({r})")
+        
+        random.shuffle(choices)
+        correct_answer = choices.index(f"{meaning} ({reading})")
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "hanja_to_meaning",
+            "question": f"{hanja}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "hanja": hanja,
+            "meaning": meaning,
+            "reading": reading
+        })
+    
+    # 11-20번: 사자성어 → 속뜻 맞추기 (5지선다)
+    for i in range(10, 20):
+        idiom, data = selected_idioms[i-10]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[1]["inner_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [data["inner_meaning"]] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(data["inner_meaning"])
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "idiom_to_inner",
+            "question": f"{idiom}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+    
+    # 21-30번: 속뜻 → 사자성어 맞추기 (5지선다)
+    for i in range(20, 30):
+        idiom, data = selected_idioms[i-10]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[0] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [idiom] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(idiom)
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "inner_to_idiom",
+            "question": data["inner_meaning"],
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+    
+    # 31-40번: 한글뜻 → 사자성어 맞추기 (5지선다)
+    for i in range(30, 40):
+        idiom, data = selected_idioms[i-10]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[0] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [idiom] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(idiom)
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "korean_to_idiom",
+            "question": data["korean"],
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+    
+    # 41-50번: 사자성어 → 겉뜻 맞추기 (5지선다)
+    for i in range(40, 50):
+        idiom, data = selected_idioms[i-10]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[1]["outer_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [data["outer_meaning"]] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(data["outer_meaning"])
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "idiom_to_outer",
+            "question": f"{idiom}",
             "choices": choices,
             "correct_answer": correct_answer,
             "idiom": idiom,
@@ -1748,10 +1978,16 @@ def show_exam_question():
     question_type = current_q.get("type", "")
     question_main = current_q.get("question", "문제를 불러올 수 없습니다.")
     
-    if question_type == "idiom_to_inner":
+    if question_type == "hanja_to_meaning":
+        question_text = f"다음 한자의 뜻은?"
+    elif question_type == "idiom_to_inner":
         question_text = f"다음 사자성어의 속뜻은?"
     elif question_type == "inner_to_idiom":
         question_text = f"다음 속뜻에 해당하는 사자성어는?"
+    elif question_type == "korean_to_idiom":
+        question_text = f"다음 한글 뜻에 해당하는 사자성어는?"
+    elif question_type == "idiom_to_outer":
+        question_text = f"다음 사자성어의 겉뜻은?"
     else:
         question_text = f"다음 문제를 풀어주세요:"
     
@@ -1989,7 +2225,11 @@ def show_statistics():
     # 시험 결과 통계
     if st.session_state.exam_results:
         st.markdown("---")
-        st.subheader("📝 최근 시험 결과")
+        exam_type = st.session_state.get('exam_type', 'type1')
+        if exam_type == "type1":
+            st.subheader("📝 최근 시험 결과 - Type 1 (20문제)")
+        else:
+            st.subheader("📝 최근 시험 결과 - Type 2 (50문제)")
         
         results = st.session_state.exam_results
         col1, col2, col3 = st.columns(3)
