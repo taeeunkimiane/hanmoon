@@ -1,6 +1,8 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import random
 import json
+import time
 from datetime import datetime
 
 # 한자 데이터 (확장된 버전)
@@ -849,11 +851,205 @@ if 'current_question' not in st.session_state:
     st.session_state.current_question = None
 if 'show_answer' not in st.session_state:
     st.session_state.show_answer = False
+if 'speed_quiz_score' not in st.session_state:
+    st.session_state.speed_quiz_score = 0
+if 'speed_quiz_total' not in st.session_state:
+    st.session_state.speed_quiz_total = 0
+if 'speed_quiz_start_time' not in st.session_state:
+    st.session_state.speed_quiz_start_time = None
+if 'exam_questions' not in st.session_state:
+    st.session_state.exam_questions = []
+if 'exam_current_index' not in st.session_state:
+    st.session_state.exam_current_index = 0
+if 'exam_answers' not in st.session_state:
+    st.session_state.exam_answers = {}
+if 'exam_submitted' not in st.session_state:
+    st.session_state.exam_submitted = False
+if 'exam_results' not in st.session_state:
+    st.session_state.exam_results = None
+if 'review_list' not in st.session_state:
+    st.session_state.review_list = []
+if 'keyboard_action' not in st.session_state:
+    st.session_state.keyboard_action = None
+if 'selected_choice' not in st.session_state:
+    st.session_state.selected_choice = None
+
+def add_keyboard_handler(mode="general"):
+    """키보드 이벤트 핸들러 추가"""
+    keyboard_js = f"""
+    <script>
+    let keyboardData = null;
+    
+    document.addEventListener('keydown', function(event) {{
+        // 입력 필드에 포커스되어 있으면 무시
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {{
+            return;
+        }}
+        
+        event.preventDefault();
+        
+        switch(event.key) {{
+            case '1':
+                keyboardData = {{'action': 'show_answer', 'timestamp': Date.now()}};
+                break;
+            case '2':
+                keyboardData = {{'action': 'next_question', 'timestamp': Date.now()}};
+                break;
+            case 'a':
+            case 'A':
+                keyboardData = {{'action': 'select_choice', 'value': 0, 'timestamp': Date.now()}};
+                break;
+            case 'b':
+            case 'B':
+                keyboardData = {{'action': 'select_choice', 'value': 1, 'timestamp': Date.now()}};
+                break;
+            case 'c':
+            case 'C':
+                keyboardData = {{'action': 'select_choice', 'value': 2, 'timestamp': Date.now()}};
+                break;
+            case 'd':
+            case 'D':
+                keyboardData = {{'action': 'select_choice', 'value': 3, 'timestamp': Date.now()}};
+                break;
+            case 'e':
+            case 'E':
+                keyboardData = {{'action': 'select_choice', 'value': 4, 'timestamp': Date.now()}};
+                break;
+            case 'Enter':
+                keyboardData = {{'action': 'submit_answer', 'timestamp': Date.now()}};
+                break;
+        }}
+        
+        // Streamlit에 데이터 전송
+        if (keyboardData) {{
+            window.parent.postMessage({{
+                type: 'streamlit:setComponentValue',
+                value: keyboardData
+            }}, '*');
+        }}
+    }});
+    
+    // 화면에 단축키 안내 표시
+    const helpDiv = document.createElement('div');
+    helpDiv.innerHTML = `
+        <div style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; 
+                    padding: 10px; border-radius: 5px; font-size: 12px; z-index: 1000;">
+            <strong>🎯 키보드 단축키</strong><br>
+            <span style="color: #4CAF50;">1</span>: 정답 보기 | <span style="color: #2196F3;">2</span>: 다음 문제<br>
+            <span style="color: #FF9800;">A~E</span>: 선택지 | <span style="color: #F44336;">Enter</span>: 제출
+        </div>
+    `;
+    document.body.appendChild(helpDiv);
+    </script>
+    """
+    
+    # JavaScript 컴포넌트 실행하고 결과 받기
+    keyboard_result = components.html(keyboard_js, height=0)
+    
+    # 키보드 입력이 있으면 세션 상태에 저장
+    if keyboard_result:
+        st.session_state.keyboard_action = keyboard_result
+
+def handle_keyboard_action():
+    """키보드 액션 처리"""
+    if st.session_state.keyboard_action:
+        action_data = st.session_state.keyboard_action
+        action = action_data.get('action')
+        value = action_data.get('value')
+        
+        if action == 'show_answer':
+            st.session_state.show_answer = True
+            st.rerun()
+        elif action == 'next_question':
+            handle_next_question()
+        elif action == 'select_choice':
+            st.session_state.selected_choice = value
+            # 시험 모드에서는 바로 답 저장
+            if st.session_state.exam_questions and not st.session_state.exam_submitted:
+                current_q = st.session_state.exam_questions[st.session_state.exam_current_index]
+                st.session_state.exam_answers[current_q['question_num']] = value
+            st.rerun()
+        elif action == 'submit_answer':
+            handle_submit_answer()
+        
+        # 액션 처리 후 초기화
+        st.session_state.keyboard_action = None
+
+def handle_next_question():
+    """다음 문제로 넘어가기"""
+    # 시험 모드인 경우
+    if st.session_state.exam_questions and not st.session_state.exam_submitted:
+        if st.session_state.exam_current_index < len(st.session_state.exam_questions) - 1:
+            st.session_state.exam_current_index += 1
+            st.rerun()
+        return
+    
+    current_question = st.session_state.current_question
+    
+    if not current_question:
+        return
+    
+    # 현재 모드에 따라 다음 문제 생성
+    if current_question.get("quiz_type") == "speed_multiple_choice":
+        generate_speed_quiz_question()
+    elif current_question.get("quiz_type") in ["multiple_choice", "ox"]:
+        # 퀴즈 모드에서 같은 유형으로 다음 문제
+        if current_question["quiz_type"] == "multiple_choice":
+            if current_question["type"] == "hanja":
+                generate_quiz_question("한자 4지선다")
+            else:
+                if "겉뜻" in current_question["question"]:
+                    generate_quiz_question("사자성어 4지선다 (겉뜻)")
+                else:
+                    generate_quiz_question("사자성어 4지선다 (속뜻)")
+        else:
+            if current_question["type"] == "hanja":
+                generate_quiz_question("한자 O/X 퀴즈")
+            else:
+                if "겉뜻" in current_question["question"]:
+                    generate_quiz_question("사자성어 O/X 퀴즈 (겉뜻)")
+                else:
+                    generate_quiz_question("사자성어 O/X 퀴즈 (속뜻)")
+    else:
+        # 암기 연습 모드
+        practice_type = get_practice_type_from_question(current_question)
+        generate_memory_question(practice_type)
+    
+    st.rerun()
+
+def handle_submit_answer():
+    """답 제출 처리"""
+    # 시험 모드인 경우
+    if st.session_state.exam_questions and not st.session_state.exam_submitted:
+        if len(st.session_state.exam_answers) == len(st.session_state.exam_questions):
+            submit_exam()
+            st.rerun()
+        return
+    
+    current_question = st.session_state.current_question
+    selected_choice = st.session_state.selected_choice
+    
+    if not current_question or selected_choice is None:
+        return
+    
+    # 문제 유형에 따라 답 제출 처리
+    if current_question.get("quiz_type") == "speed_multiple_choice":
+        check_speed_quiz_answer(selected_choice, current_question["correct_answer"])
+    elif current_question.get("quiz_type") == "multiple_choice":
+        check_quiz_answer(selected_choice, current_question["correct_answer"])
+    elif current_question.get("quiz_type") == "ox":
+        # O/X는 0,1로 처리
+        ox_answer = "O" if selected_choice == 0 else "X"
+        check_quiz_answer(ox_answer, current_question["correct_answer"])
+    
+    st.session_state.selected_choice = None
+    st.rerun()
 
 def main():
     st.set_page_config(page_title="📚 한자 & 사자성어 학습", page_icon="📚", layout="wide")
     
-    # 메인 화면에는 아무 타이틀도 표시하지 않음
+    # 키보드 액션 처리
+    handle_keyboard_action()
     
     # 사이드바 - 메뉴 및 모든 선택 옵션
     with st.sidebar:
@@ -861,7 +1057,9 @@ def main():
         mode = st.selectbox("학습 모드 선택", [
             "🏠 홈",
             "📚 암기 연습",
-            "🧠 퀴즈 모드",
+            "🧠 퀴즈 모드", 
+            "⚡ 스피드 퀴즈",
+            "📝 시험 모드",
             "📊 학습 통계",
             "💾 복습 노트",
             "🔍 사자성어 검색"
@@ -907,6 +1105,24 @@ def main():
             if st.button("🔄 초기화", use_container_width=True):
                 st.session_state.current_question = None
                 st.session_state.show_answer = False
+
+        # 스피드 퀴즈 설정
+        elif mode == "⚡ 스피드 퀴즈":
+            st.subheader("⚡ 스피드 퀴즈 설정")
+            if st.button("🚀 스피드 퀴즈 시작", use_container_width=True):
+                start_speed_quiz()
+            
+            if st.button("🔄 초기화", use_container_width=True):
+                reset_speed_quiz()
+
+        # 시험 모드 설정
+        elif mode == "📝 시험 모드":
+            st.subheader("📝 시험 설정")
+            if st.button("📝 새 시험 시작", use_container_width=True):
+                generate_exam()
+            
+            if st.button("🔄 초기화", use_container_width=True):
+                reset_exam()
         
         # 사자성어 검색 설정
         elif mode == "🔍 사자성어 검색":
@@ -929,13 +1145,17 @@ def main():
         else:
             st.info("아직 문제를 풀지 않았습니다.")
     
-    # 메인 컨텐츠 - 깔끔하게 내용만
+    # 메인 컨텐츠
     if mode == "🏠 홈":
         show_home()
     elif mode == "📚 암기 연습":
         show_memory_practice()
     elif mode == "🧠 퀴즈 모드":
         show_quiz_mode()
+    elif mode == "⚡ 스피드 퀴즈":
+        show_speed_quiz()
+    elif mode == "📝 시험 모드":
+        show_exam_mode()
     elif mode == "📊 학습 통계":
         show_statistics()
     elif mode == "💾 복습 노트":
@@ -948,9 +1168,9 @@ def show_home():
     
     with col1:
         st.subheader("📖 데이터 현황")
-        st.info(f"한자: **{len(HANJA_DATA)}개**")
-        st.info(f"사자성어: **{len(IDIOM_DATA)}개**")
-        st.success(f"총 학습 항목: **{len(HANJA_DATA) + len(IDIOM_DATA)}개**")
+        st.info(f"한자: {len(HANJA_DATA)}개")
+        st.info(f"사자성어: {len(IDIOM_DATA)}개")
+        st.success(f"총 학습 항목: {len(HANJA_DATA) + len(IDIOM_DATA)}개")
     
     with col2:
         st.subheader("🎯 학습 모드")
@@ -959,49 +1179,41 @@ def show_home():
         - 한자 → 뜻 맞히기
         - 뜻 → 한자 맞히기
         - 사자성어 → 뜻 맞히기
-        - 뜻 → 사자성어 맞히기
         
         **🧠 퀴즈 모드**
         - 4지선다 퀴즈
         - O/X 퀴즈
-        - 겉뜻/속뜻 구분 퀴즈
+        
+        **⚡ 스피드 퀴즈**
+        - 빠른 속도의 연속 퀴즈
+        
+        **📝 시험 모드**
+        - 사자성어 20문제 시험
+        - 점수 및 분석 제공
         """)
     
     st.markdown("---")
     st.subheader("🚀 빠른 시작")
     
-    col3, col4, col5 = st.columns(3)
+    col3, col4, col5, col6 = st.columns(4)
     with col3:
-        if st.button("📚 한자 암기 시작", use_container_width=True):
+        if st.button("📚 한자 암기", use_container_width=True):
             st.session_state.quick_start = "hanja_memory"
     with col4:
-        if st.button("📜 사자성어 암기 시작", use_container_width=True):
+        if st.button("📜 사자성어 암기", use_container_width=True):
             st.session_state.quick_start = "idiom_memory"
     with col5:
-        if st.button("🎲 랜덤 퀴즈 시작", use_container_width=True):
-            st.session_state.quick_start = "random_quiz"
+        if st.button("⚡ 스피드 퀴즈", use_container_width=True):
+            start_speed_quiz()
+    with col6:
+        if st.button("📝 시험 보기", use_container_width=True):
+            generate_exam()
+    
+    # 키보드 단축키 안내
+    show_keyboard_shortcuts()
 
 def show_memory_practice():
     st.header("📚 암기 연습 모드")
-    
-    practice_type = st.selectbox("연습 유형 선택", [
-        "한자 → 뜻 맞히기",
-        "뜻 → 한자 맞히기", 
-        "사자성어 → 겉뜻 맞히기",
-        "사자성어 → 속뜻 맞히기",
-        "겉뜻 → 사자성어 맞히기",
-        "속뜻 → 사자성어 맞히기"
-    ])
-    
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        if st.button("🎯 새 문제 시작", use_container_width=True):
-            generate_memory_question(practice_type)
-    
-    with col2:
-        if st.button("🔄 초기화", use_container_width=True):
-            st.session_state.current_question = None
-            st.session_state.show_answer = False
     
     if st.session_state.current_question:
         show_memory_question()
@@ -1036,7 +1248,7 @@ def generate_memory_question(practice_type):
         if practice_type == "사자성어 → 겉뜻 맞히기":
             st.session_state.current_question = {
                 "type": "idiom_to_outer",
-                "question": f"{idiom} ({korean})",
+                "question": f"{idiom}",
                 "answer": outer_meaning,
                 "idiom": idiom,
                 "korean": korean,
@@ -1046,7 +1258,7 @@ def generate_memory_question(practice_type):
         elif practice_type == "사자성어 → 속뜻 맞히기":
             st.session_state.current_question = {
                 "type": "idiom_to_inner",
-                "question": f"{idiom} ({korean})",
+                "question": f"{idiom}",
                 "answer": inner_meaning,
                 "idiom": idiom,
                 "korean": korean,
@@ -1057,7 +1269,7 @@ def generate_memory_question(practice_type):
             st.session_state.current_question = {
                 "type": "outer_to_idiom",
                 "question": outer_meaning,
-                "answer": f"{idiom} ({korean})",
+                "answer": f"{idiom}",
                 "idiom": idiom,
                 "korean": korean,
                 "outer_meaning": outer_meaning,
@@ -1067,7 +1279,7 @@ def generate_memory_question(practice_type):
             st.session_state.current_question = {
                 "type": "inner_to_idiom",
                 "question": inner_meaning,
-                "answer": f"{idiom} ({korean})",
+                "answer": f"{idiom}",
                 "idiom": idiom,
                 "korean": korean,
                 "outer_meaning": outer_meaning,
@@ -1079,17 +1291,26 @@ def generate_memory_question(practice_type):
 def show_memory_question():
     question = st.session_state.current_question
     
-    # 문제 표시 (헤더 없이 바로 문제만)
-    st.markdown(f"<div style='font-size: 24px; padding: 20px; background-color: #f0f0f0; border-radius: 10px; text-align: center;'>{question['question']}</div>", unsafe_allow_html=True)
+    # 키보드 핸들러 추가
+    add_keyboard_handler("memory")
+    
+    # 문제 표시 (더 큰 상자)
+    st.markdown(f"""
+    <div style='font-size: 32px; padding: 40px; background-color: #f0f2f6; 
+                border-radius: 15px; text-align: center; margin: 20px 0; 
+                border: 2px solid #e1e5e9; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+        {question['question']}
+    </div>
+    """, unsafe_allow_html=True)
     
     # 플래시 카드 형식 - 상단에 버튼 2개
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💡 정답 확인", use_container_width=True):
+        if st.button("💡 정답 확인 (키: 1)", use_container_width=True, type="primary"):
             st.session_state.show_answer = True
     
     with col2:
-        if st.button("⏭️ 다음 문제", use_container_width=True):
+        if st.button("⏭️ 다음 문제 (키: 2)", use_container_width=True):
             practice_type = get_practice_type_from_question(question)
             generate_memory_question(practice_type)
             st.rerun()
@@ -1097,25 +1318,25 @@ def show_memory_question():
     # 정답 표시 (정답 확인 버튼을 눌렀을 때만)
     if st.session_state.show_answer:
         st.markdown("### ✅ 정답")
-        st.success(f"**정답:** {question['answer']}")
+        st.success(f"정답: {question['answer']}")
         
         # 상세 정보 표시
         if "hanja" in question:
             st.markdown("### 📚 상세 정보")
-            st.info(f"**한자:** {question['hanja']}")
-            st.info(f"**뜻:** {question['meaning']}")
-            st.info(f"**음:** {question['reading']}")
+            st.info(f"한자: {question['hanja']}")
+            st.info(f"뜻: {question['meaning']}")
+            st.info(f"음: {question['reading']}")
         elif "idiom" in question:
             st.markdown("### 📚 상세 정보")
-            st.info(f"**사자성어:** {question['idiom']}")
-            st.info(f"**한글:** {question['korean']}")
+            st.info(f"사자성어: {question['idiom']}")
+            st.info(f"한글: {question['korean']}")
             
             # 한자 분석 추가
             hanja_analysis = analyze_hanja_chars(question['idiom'])
-            st.info(f"**한자 분석:** {hanja_analysis}")
+            st.info(f"한자 분석: {hanja_analysis}")
             
-            st.info(f"**겉뜻:** {question['outer_meaning']}")
-            st.info(f"**속뜻:** {question['inner_meaning']}")
+            st.info(f"겉뜻: {question['outer_meaning']}")
+            st.info(f"속뜻: {question['inner_meaning']}")
 
 def get_practice_type_from_question(question):
     if question["type"] == "hanja_to_meaning":
@@ -1133,26 +1354,6 @@ def get_practice_type_from_question(question):
 
 def show_quiz_mode():
     st.header("🧠 퀴즈 모드")
-    
-    quiz_type = st.selectbox("퀴즈 유형 선택", [
-        "한자 4지선다",
-        "사자성어 4지선다 (겉뜻)", 
-        "사자성어 4지선다 (속뜻)",
-        "한자 O/X 퀴즈",
-        "사자성어 O/X 퀴즈 (겉뜻)",
-        "사자성어 O/X 퀴즈 (속뜻)",
-        "혼합 랜덤 퀴즈"
-    ])
-    
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        if st.button("🎯 퀴즈 시작", use_container_width=True):
-            generate_quiz_question(quiz_type)
-    
-    with col2:
-        if st.button("🔄 초기화", use_container_width=True):
-            st.session_state.current_question = None
-            st.session_state.show_answer = False
     
     if st.session_state.current_question and st.session_state.current_question.get("quiz_type"):
         show_quiz_question()
@@ -1187,7 +1388,7 @@ def generate_multiple_choice_question(quiz_type):
         st.session_state.current_question = {
             "quiz_type": "multiple_choice",
             "type": "hanja",
-            "question": f"다음 한자의 뜻은? **{correct_hanja}**",
+            "question": f"다음 한자의 뜻은? {correct_hanja}",
             "choices": choices,
             "correct_answer": correct_answer,
             "explanation": f"한자 '{correct_hanja}'의 뜻은 '{correct_meaning}'이고 음은 '{correct_reading}'입니다."
@@ -1201,12 +1402,12 @@ def generate_multiple_choice_question(quiz_type):
             correct_meaning = data["outer_meaning"]
             # 다른 사자성어의 겉뜻들
             wrong_choices = random.sample([item[1]["outer_meaning"] for item in IDIOM_DATA.items() if item[0] != correct_idiom], 3)
-            question_text = f"다음 사자성어의 겉뜻은? **{correct_idiom}**"
+            question_text = f"다음 사자성어의 겉뜻은? {correct_idiom}"
         else:  # 속뜻
             correct_meaning = data["inner_meaning"]
             # 다른 사자성어의 속뜻들
             wrong_choices = random.sample([item[1]["inner_meaning"] for item in IDIOM_DATA.items() if item[0] != correct_idiom], 3)
-            question_text = f"다음 사자성어의 속뜻은? **{correct_idiom}**"
+            question_text = f"다음 사자성어의 속뜻은? {correct_idiom}"
         
         choices = [correct_meaning] + wrong_choices
         random.shuffle(choices)
@@ -1293,28 +1494,46 @@ def generate_ox_question(quiz_type):
 def show_quiz_question():
     question = st.session_state.current_question
     
-    # 문제 표시 (헤더 없이 바로 문제만)
-    st.markdown(f"<div style='font-size: 18px; padding: 20px; background-color: #f0f0f0; border-radius: 10px;'>{question['question']}</div>", unsafe_allow_html=True)
+    # 키보드 핸들러 추가
+    add_keyboard_handler("quiz")
+    
+    # 문제 표시 (더 큰 상자)
+    st.markdown(f"""
+    <div style='font-size: 24px; padding: 30px; background-color: #f0f2f6; 
+                border-radius: 15px; margin: 20px 0; 
+                border: 2px solid #e1e5e9; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+        {question['question']}
+    </div>
+    """, unsafe_allow_html=True)
     
     if not st.session_state.show_answer:
         if question["quiz_type"] == "multiple_choice":
             # 4지선다
-            user_answer = st.radio("정답을 선택하세요:", 
+            # 키보드로 선택된 선택지가 있으면 해당 선택지를 기본값으로 설정
+            default_choice = st.session_state.selected_choice if st.session_state.selected_choice is not None else 0
+            
+            user_answer = st.radio("정답을 선택하세요 (키: A~E):", 
                                  options=range(len(question["choices"])),
                                  format_func=lambda x: f"{chr(65+x)}. {question['choices'][x]}",
-                                 key="quiz_answer")
+                                 key="quiz_answer",
+                                 index=default_choice)
             
-            if st.button("정답 확인", use_container_width=True):
+            # 키보드 선택이 있으면 업데이트
+            if st.session_state.selected_choice is not None:
+                user_answer = st.session_state.selected_choice
+            
+            if st.button("정답 확인 (키: Enter)", use_container_width=True, type="primary"):
                 check_quiz_answer(user_answer, question["correct_answer"])
                 
         else:
             # O/X 퀴즈
+            st.markdown("**선택하세요 (키: A=O, B=X):**")
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("⭕ O (맞다)", use_container_width=True):
+                if st.button("⭕ A. O (맞다)", use_container_width=True, type="primary"):
                     check_quiz_answer("O", question["correct_answer"])
             with col2:
-                if st.button("❌ X (틀리다)", use_container_width=True):
+                if st.button("❌ B. X (틀리다)", use_container_width=True):
                     check_quiz_answer("X", question["correct_answer"])
     
     # 정답 표시
@@ -1333,9 +1552,9 @@ def show_quiz_question():
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
         
-        st.info(f"**설명:** {question['explanation']}")
+        st.info(f"설명: {question['explanation']}")
         
-        if st.button("➡️ 다음 문제", use_container_width=True):
+        if st.button("➡️ 다음 문제 (키: 2)", use_container_width=True):
             # 같은 유형의 다음 문제 생성하고 자동으로 화면 새로고침
             if question["quiz_type"] == "multiple_choice":
                 if question["type"] == "hanja":
@@ -1372,67 +1591,555 @@ def check_quiz_answer(user_answer, correct_answer):
     else:
         st.session_state.quiz_result = False
 
-def show_statistics():
-    if st.session_state.score["total"] == 0:
-        st.info("아직 퀴즈를 풀지 않았습니다. 퀴즈를 먼저 풀어보세요!")
+# 스피드 퀴즈 기능들
+def start_speed_quiz():
+    st.session_state.speed_quiz_score = 0
+    st.session_state.speed_quiz_total = 0
+    st.session_state.speed_quiz_start_time = time.time()
+    generate_speed_quiz_question()
+
+def reset_speed_quiz():
+    st.session_state.speed_quiz_score = 0
+    st.session_state.speed_quiz_total = 0
+    st.session_state.speed_quiz_start_time = None
+    st.session_state.current_question = None
+    st.session_state.show_answer = False
+
+def generate_speed_quiz_question():
+    # 랜덤하게 한자 또는 사자성어 문제 생성
+    question_type = random.choice(["hanja", "idiom_outer", "idiom_inner"])
+    
+    if question_type == "hanja":
+        hanja, (meaning, reading) = random.choice(list(HANJA_DATA.items()))
+        
+        # 4지선다 생성
+        wrong_choices = random.sample([item[1] for item in HANJA_DATA.items() if item[0] != hanja], 3)
+        choices = [f"{meaning} ({reading})"]
+        for m, r in wrong_choices:
+            choices.append(f"{m} ({r})")
+        
+        random.shuffle(choices)
+        correct_answer = choices.index(f"{meaning} ({reading})")
+        
+        st.session_state.current_question = {
+            "quiz_type": "speed_multiple_choice",
+            "type": "hanja",
+            "question": f"{hanja}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "explanation": f"한자 '{hanja}'의 뜻은 '{meaning}'({reading})입니다."
+        }
+    
+    elif question_type == "idiom_outer":
+        idiom, data = random.choice(list(IDIOM_DATA.items()))
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[1]["outer_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [data["outer_meaning"]] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(data["outer_meaning"])
+        
+        st.session_state.current_question = {
+            "quiz_type": "speed_multiple_choice",
+            "type": "idiom",
+            "question": f"{idiom}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "explanation": f"사자성어 '{idiom}({data['korean']})'의 겉뜻: {data['outer_meaning']}, 속뜻: {data['inner_meaning']}"
+        }
+    
+    else:  # idiom_inner
+        idiom, data = random.choice(list(IDIOM_DATA.items()))
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[1]["inner_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [data["inner_meaning"]] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(data["inner_meaning"])
+        
+        st.session_state.current_question = {
+            "quiz_type": "speed_multiple_choice",
+            "type": "idiom",
+            "question": f"{idiom}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "explanation": f"사자성어 '{idiom}({data['korean']})'의 겉뜻: {data['outer_meaning']}, 속뜻: {data['inner_meaning']}"
+        }
+    
+    st.session_state.show_answer = False
+
+def show_speed_quiz():
+    st.header("⚡ 스피드 퀴즈")
+    
+    if st.session_state.speed_quiz_start_time:
+        # 경과 시간 표시
+        elapsed_time = time.time() - st.session_state.speed_quiz_start_time
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("경과 시간", f"{elapsed_time:.1f}초")
+        with col2:
+            st.metric("점수", f"{st.session_state.speed_quiz_score}/{st.session_state.speed_quiz_total}")
+        with col3:
+            if st.session_state.speed_quiz_total > 0:
+                accuracy = (st.session_state.speed_quiz_score / st.session_state.speed_quiz_total) * 100
+                st.metric("정확도", f"{accuracy:.1f}%")
+        
+        if st.session_state.current_question:
+            show_speed_quiz_question()
+    else:
+        st.info("오른쪽 사이드바에서 '🚀 스피드 퀴즈 시작' 버튼을 눌러주세요!")
+
+def show_speed_quiz_question():
+    question = st.session_state.current_question
+    
+    # 키보드 핸들러 추가
+    add_keyboard_handler("speed")
+    
+    # 문제 표시 (더 큰 상자)
+    st.markdown(f"""
+    <div style='font-size: 36px; padding: 40px; background-color: #ff6b6b; color: white;
+                border-radius: 15px; text-align: center; margin: 20px 0; 
+                border: 3px solid #ff5252; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'>
+        {question['question']}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if not st.session_state.show_answer:
+        # 선택지들
+        st.markdown("**선택하세요 (키: A~E):**")
+        for i, choice in enumerate(question["choices"]):
+            key_letter = chr(65+i)  # A, B, C, D, E
+            if st.button(f"{key_letter}. {choice}", use_container_width=True, key=f"speed_{i}"):
+                check_speed_quiz_answer(i, question["correct_answer"])
+                st.rerun()
+    
+    # 정답 표시
+    if st.session_state.show_answer:
+        if hasattr(st.session_state, 'speed_quiz_result'):
+            if st.session_state.speed_quiz_result:
+                st.success("🎉 정답!")
+            else:
+                st.error("❌ 틀림!")
+        
+        st.info(f"설명: {question['explanation']}")
+        
+        # 자동으로 다음 문제로 (1초 후)
+        time.sleep(1)
+        generate_speed_quiz_question()
+        st.rerun()
+
+def check_speed_quiz_answer(user_answer, correct_answer):
+    st.session_state.show_answer = True
+    st.session_state.speed_quiz_total += 1
+    
+    if user_answer == correct_answer:
+        st.session_state.speed_quiz_result = True
+        st.session_state.speed_quiz_score += 1
+    else:
+        st.session_state.speed_quiz_result = False
+
+# 시험 모드 기능들
+def generate_exam():
+    """20문제 시험 생성 (사자성어 속뜻 맞추기 10문제 + 속뜻으로 사자성어 맞추기 10문제)"""
+    st.session_state.exam_questions = []
+    st.session_state.exam_current_index = 0
+    st.session_state.exam_answers = {}
+    st.session_state.exam_submitted = False
+    st.session_state.exam_results = None
+    
+    # 사자성어 20개 선택
+    selected_idioms = random.sample(list(IDIOM_DATA.items()), 20)
+    
+    # 1-10번: 사자성어 → 속뜻 맞추기 (5지선다)
+    for i in range(10):
+        idiom, data = selected_idioms[i]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[1]["inner_meaning"] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [data["inner_meaning"]] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(data["inner_meaning"])
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "idiom_to_inner",
+            "question": f"{idiom}",
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+    
+    # 11-20번: 속뜻 → 사자성어 맞추기 (5지선다)
+    for i in range(10, 20):
+        idiom, data = selected_idioms[i]
+        
+        # 5지선다 생성
+        wrong_choices = random.sample([item[0] for item in IDIOM_DATA.items() if item[0] != idiom], 4)
+        choices = [idiom] + wrong_choices
+        random.shuffle(choices)
+        correct_answer = choices.index(idiom)
+        
+        st.session_state.exam_questions.append({
+            "question_num": i + 1,
+            "type": "inner_to_idiom",
+            "question": data["inner_meaning"],
+            "choices": choices,
+            "correct_answer": correct_answer,
+            "idiom": idiom,
+            "data": data
+        })
+
+def reset_exam():
+    st.session_state.exam_questions = []
+    st.session_state.exam_current_index = 0
+    st.session_state.exam_answers = {}
+    st.session_state.exam_submitted = False
+    st.session_state.exam_results = None
+
+def show_exam_mode():
+    st.header("📝 시험 모드")
+    
+    if not st.session_state.exam_questions:
+        st.info("오른쪽 사이드바에서 '📝 새 시험 시작' 버튼을 눌러주세요!")
         return
     
-    # 전체 통계
-    total = st.session_state.score["total"]
-    correct = st.session_state.score["correct"]
-    wrong = total - correct
-    accuracy = (correct / total) * 100
+    if st.session_state.exam_submitted:
+        show_exam_results()
+    else:
+        show_exam_question()
+
+def show_exam_question():
+    # 키보드 핸들러 추가
+    add_keyboard_handler("exam")
     
-    col1, col2, col3, col4 = st.columns(4)
+    # 진행률 표시
+    progress = len(st.session_state.exam_answers) / len(st.session_state.exam_questions)
+    st.progress(progress)
+    st.write(f"진행률: {len(st.session_state.exam_answers)}/{len(st.session_state.exam_questions)} 문제")
+    
+    # 현재 문제 표시
+    current_q = st.session_state.exam_questions[st.session_state.exam_current_index]
+    
+    st.markdown(f"### 문제 {current_q['question_num']}")
+    
+    # 문제 표시 (더 큰 상자)
+    if current_q["type"] == "idiom_to_inner":
+        question_text = f"다음 사자성어의 속뜻은?"
+        question_main = current_q["question"]
+    else:
+        question_text = f"다음 속뜻에 해당하는 사자성어는?"
+        question_main = current_q["question"]
+    
+    st.markdown(f"**{question_text}**")
+    st.markdown(f"""
+    <div style='font-size: 28px; padding: 30px; background-color: #e3f2fd; 
+                border-radius: 15px; text-align: center; margin: 20px 0; 
+                border: 2px solid #2196f3; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+        {question_main}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 선택지
+    answer_key = f"exam_q_{current_q['question_num']}"
+    current_answer = st.session_state.exam_answers.get(current_q['question_num'], None)
+    
+    # 키보드로 선택된 선택지가 있으면 해당 선택지를 기본값으로 설정
+    if st.session_state.selected_choice is not None:
+        current_answer = st.session_state.selected_choice
+        st.session_state.exam_answers[current_q['question_num']] = st.session_state.selected_choice
+        st.session_state.selected_choice = None  # 선택 후 초기화
+    
+    user_answer = st.radio(
+        "정답을 선택하세요 (키: A~E):",
+        options=range(len(current_q["choices"])),
+        format_func=lambda x: f"{chr(65+x)}. {current_q['choices'][x]}",
+        key=answer_key,
+        index=current_answer if current_answer is not None else 0
+    )
+    
+    # 답 저장
+    st.session_state.exam_answers[current_q['question_num']] = user_answer
+    
+    # 네비게이션 버튼
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("총 문제 수", total)
+        if st.session_state.exam_current_index > 0:
+            if st.button("⬅️ 이전 문제"):
+                st.session_state.exam_current_index -= 1
+                st.rerun()
+    
     with col2:
-        st.metric("정답 수", correct)
+        if len(st.session_state.exam_answers) == len(st.session_state.exam_questions):
+            if st.button("✅ 시험 제출 (키: Enter)", type="primary"):
+                submit_exam()
+                st.rerun()
+    
     with col3:
-        st.metric("오답 수", wrong)
-    with col4:
-        st.metric("정답률", f"{accuracy:.1f}%")
+        if st.session_state.exam_current_index < len(st.session_state.exam_questions) - 1:
+            if st.button("➡️ 다음 문제 (키: 2)"):
+                st.session_state.exam_current_index += 1
+                st.rerun()
+
+def submit_exam():
+    """시험 제출 및 채점"""
+    correct_count = 0
+    results = []
     
-    # 정답률 시각화
-    st.markdown("### 📈 정답률 현황")
+    for question in st.session_state.exam_questions:
+        question_num = question["question_num"]
+        user_answer = st.session_state.exam_answers.get(question_num)
+        correct_answer = question["correct_answer"]
+        
+        is_correct = user_answer == correct_answer
+        if is_correct:
+            correct_count += 1
+        
+        results.append({
+            "question_num": question_num,
+            "question": question,
+            "user_answer": user_answer,
+            "correct_answer": correct_answer,
+            "is_correct": is_correct
+        })
     
-    if accuracy >= 80:
-        st.success(f"🎉 훌륭합니다! 정답률이 {accuracy:.1f}%입니다.")
-    elif accuracy >= 60:
-        st.warning(f"👍 좋습니다! 정답률이 {accuracy:.1f}%입니다.")
+    st.session_state.exam_results = {
+        "score": correct_count,
+        "total": len(st.session_state.exam_questions),
+        "percentage": (correct_count / len(st.session_state.exam_questions)) * 100,
+        "results": results
+    }
+    
+    st.session_state.exam_submitted = True
+
+def show_exam_results():
+    """시험 결과 표시"""
+    results = st.session_state.exam_results
+    
+    st.header("📊 시험 결과")
+    
+    # 점수 표시
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("점수", f"{results['score']}/{results['total']}")
+    with col2:
+        st.metric("정답률", f"{results['percentage']:.1f}%")
+    with col3:
+        if results['percentage'] >= 80:
+            grade = "A"
+            color = "🟢"
+        elif results['percentage'] >= 70:
+            grade = "B"
+            color = "🟡"
+        elif results['percentage'] >= 60:
+            grade = "C"
+            color = "🟠"
+        else:
+            grade = "D"
+            color = "🔴"
+        st.metric("등급", f"{color} {grade}")
+    
+    # 성과 분석
+    if results['percentage'] >= 90:
+        st.success("🎉 매우 우수합니다! 완벽한 이해도를 보여주고 있습니다.")
+    elif results['percentage'] >= 80:
+        st.success("👍 우수합니다! 대부분의 내용을 잘 이해하고 있습니다.")
+    elif results['percentage'] >= 70:
+        st.warning("⚠️ 양호합니다. 조금 더 학습하면 더 좋은 결과를 얻을 수 있습니다.")
+    elif results['percentage'] >= 60:
+        st.warning("📚 더 열심히 공부해야 합니다.")
     else:
-        st.error(f"💪 더 열심히! 정답률이 {accuracy:.1f}%입니다.")
+        st.error("❌ 기초부터 다시 학습하는 것을 권합니다.")
     
-    # 진행률 바
-    progress = st.progress(accuracy / 100)
+    # 틀린 문제들을 복습 목록에 추가
+    wrong_questions = [r for r in results['results'] if not r['is_correct']]
+    if wrong_questions:
+        if st.button("📝 틀린 문제 복습 목록에 추가"):
+            for wrong in wrong_questions:
+                question = wrong['question']
+                user_choice = question['choices'][wrong['user_answer']] if wrong['user_answer'] is not None else "선택 안함"
+                correct_choice = question['choices'][wrong['correct_answer']]
+                
+                # 한자 분석 추가
+                hanja_analysis = analyze_hanja_chars(question['idiom'])
+                
+                review_item = {
+                    "question": question['question'],
+                    "user_answer": user_choice,
+                    "correct_answer": correct_choice,
+                    "explanation": f"사자성어: {question['idiom']} ({question['data']['korean']})\n한자 분석: {hanja_analysis}\n겉뜻: {question['data']['outer_meaning']}\n속뜻: {question['data']['inner_meaning']}",
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "type": "exam"
+                }
+                
+                # 중복 확인 후 추가
+                if review_item not in st.session_state.review_list:
+                    st.session_state.review_list.append(review_item)
+            
+            st.success(f"{len(wrong_questions)}개의 틀린 문제가 복습 목록에 추가되었습니다!")
     
-    # 틀린 문제 개수
-    st.markdown("### ❌ 복습이 필요한 문제")
-    st.info(f"틀린 문제: {len(st.session_state.wrong_answers)}개")
+    # 상세 결과
+    st.markdown("---")
+    st.subheader("📋 상세 결과")
+    
+    for result in results['results']:
+        question = result['question']
+        
+        with st.expander(f"문제 {result['question_num']} - {'✅ 정답' if result['is_correct'] else '❌ 오답'}"):
+            if question['type'] == "idiom_to_inner":
+                st.markdown(f"**문제**: 다음 사자성어의 속뜻은? **{question['question']}**")
+            else:
+                st.markdown(f"**문제**: 다음 속뜻에 해당하는 사자성어는? **{question['question']}**")
+            
+            if result['user_answer'] is not None:
+                st.markdown(f"**내 답**: {question['choices'][result['user_answer']]}")
+            else:
+                st.markdown(f"**내 답**: 선택 안함")
+            
+            st.markdown(f"**정답**: {question['choices'][result['correct_answer']]}")
+            
+            # 상세 설명
+            hanja_analysis = analyze_hanja_chars(question['idiom'])
+            st.info(f"""
+            **사자성어**: {question['idiom']} ({question['data']['korean']})
+            **한자 분석**: {hanja_analysis}
+            **겉뜻**: {question['data']['outer_meaning']}
+            **속뜻**: {question['data']['inner_meaning']}
+            """)
+
+def show_statistics():
+    st.header("📊 학습 통계")
+    
+    # 기본 퀴즈 통계
+    if st.session_state.score["total"] > 0:
+        total = st.session_state.score["total"]
+        correct = st.session_state.score["correct"]
+        wrong = total - correct
+        accuracy = (correct / total) * 100
+        
+        st.subheader("🧠 퀴즈 모드 통계")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("총 문제 수", total)
+        with col2:
+            st.metric("정답 수", correct)
+        with col3:
+            st.metric("오답 수", wrong)
+        with col4:
+            st.metric("정답률", f"{accuracy:.1f}%")
+        
+        # 정답률 시각화
+        if accuracy >= 80:
+            st.success(f"🎉 훌륭합니다! 정답률이 {accuracy:.1f}%입니다.")
+        elif accuracy >= 60:
+            st.warning(f"👍 좋습니다! 정답률이 {accuracy:.1f}%입니다.")
+        else:
+            st.error(f"💪 더 열심히! 정답률이 {accuracy:.1f}%입니다.")
+        
+        # 진행률 바
+        st.progress(accuracy / 100)
+    
+    # 스피드 퀴즈 통계
+    if st.session_state.speed_quiz_total > 0:
+        st.markdown("---")
+        st.subheader("⚡ 스피드 퀴즈 통계")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("총 문제", st.session_state.speed_quiz_total)
+        with col2:
+            st.metric("정답", st.session_state.speed_quiz_score)
+        with col3:
+            speed_accuracy = (st.session_state.speed_quiz_score / st.session_state.speed_quiz_total) * 100
+            st.metric("정답률", f"{speed_accuracy:.1f}%")
+    
+    # 시험 결과 통계
+    if st.session_state.exam_results:
+        st.markdown("---")
+        st.subheader("📝 최근 시험 결과")
+        
+        results = st.session_state.exam_results
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("점수", f"{results['score']}/{results['total']}")
+        with col2:
+            st.metric("정답률", f"{results['percentage']:.1f}%")
+        with col3:
+            if results['percentage'] >= 80:
+                grade = "A"
+            elif results['percentage'] >= 70:
+                grade = "B"
+            elif results['percentage'] >= 60:
+                grade = "C"
+            else:
+                grade = "D"
+            st.metric("등급", grade)
+    
+    # 복습 노트 통계
+    st.markdown("---")
+    st.subheader("💾 복습 노트 통계")
+    
+    total_wrong = len(st.session_state.wrong_answers)
+    total_review = len(st.session_state.review_list)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("퀴즈 틀린 문제", total_wrong)
+    with col2:
+        st.metric("복습 목록", total_review)
 
 def show_review_notes():
-    if not st.session_state.wrong_answers:
-        st.info("아직 틀린 문제가 없습니다. 퀴즈를 풀어보세요!")
-        return
+    st.header("💾 복습 노트")
     
-    st.markdown(f"**총 {len(st.session_state.wrong_answers)}개의 틀린 문제가 있습니다.**")
+    # 탭으로 구분
+    tab1, tab2 = st.tabs(["🧠 퀴즈 틀린 문제", "📝 복습 목록"])
     
-    # 복습 노트 초기화 버튼
-    if st.button("🗑️ 복습 노트 초기화"):
-        st.session_state.wrong_answers = []
-        st.success("복습 노트가 초기화되었습니다.")
-        st.rerun()
+    with tab1:
+        if not st.session_state.wrong_answers:
+            st.info("아직 틀린 문제가 없습니다. 퀴즈를 풀어보세요!")
+        else:
+            st.markdown(f"**총 {len(st.session_state.wrong_answers)}개의 틀린 문제가 있습니다.**")
+            
+            # 복습 노트 초기화 버튼
+            if st.button("🗑️ 퀴즈 틀린 문제 초기화"):
+                st.session_state.wrong_answers = []
+                st.success("퀴즈 틀린 문제가 초기화되었습니다.")
+                st.rerun()
+            
+            # 틀린 문제들 표시
+            for i, item in enumerate(st.session_state.wrong_answers):
+                with st.expander(f"❌ 문제 {i+1} - {item['timestamp']}"):
+                    st.markdown(f"**문제:** {item['question']}")
+                    st.markdown(f"**내 답:** {item['user_answer']}")
+                    st.markdown(f"**정답:** {item['correct_answer']}")
+                    st.markdown(f"**설명:** {item['explanation']}")
     
-    # 틀린 문제들 표시
-    for i, item in enumerate(st.session_state.wrong_answers):
-        with st.expander(f"❌ 문제 {i+1} - {item['timestamp']}"):
-            st.markdown(f"**문제:** {item['question']}")
-            st.markdown(f"**내 답:** {item['user_answer']}")
-            st.markdown(f"**정답:** {item['correct_answer']}")
-            st.markdown(f"**설명:** {item['explanation']}")
+    with tab2:
+        if not st.session_state.review_list:
+            st.info("복습 목록이 비어있습니다. 시험에서 틀린 문제를 추가해보세요!")
+        else:
+            st.markdown(f"**총 {len(st.session_state.review_list)}개의 복습 문제가 있습니다.**")
+            
+            # 복습 목록 초기화 버튼
+            if st.button("🗑️ 복습 목록 초기화"):
+                st.session_state.review_list = []
+                st.success("복습 목록이 초기화되었습니다.")
+                st.rerun()
+            
+            # 복습 문제들 표시
+            for i, item in enumerate(st.session_state.review_list):
+                with st.expander(f"📚 복습 {i+1} - {item['timestamp']}"):
+                    st.markdown(f"**문제:** {item['question']}")
+                    st.markdown(f"**내 답:** {item['user_answer']}")
+                    st.markdown(f"**정답:** {item['correct_answer']}")
+                    st.markdown(f"**설명:** {item['explanation']}")
 
 def show_idiom_search():
+    st.header("🔍 사자성어 검색")
+    
     # 검색 기능
     if hasattr(st.session_state, 'search_term') and st.session_state.search_term:
         search_term = st.session_state.search_term
@@ -1470,6 +2177,28 @@ def show_idiom_search():
     # 기본 안내 메시지
     if not hasattr(st.session_state, 'search_term') and not hasattr(st.session_state, 'show_all_idioms'):
         st.info("왼쪽 사이드바에서 검색어를 입력하거나 전체 목록을 확인하세요.")
+
+# 키보드 단축키 안내 표시 함수
+def show_keyboard_shortcuts():
+    """키보드 단축키 안내 표시"""
+    with st.expander("🎯 키보드 단축키 안내", expanded=False):
+        st.markdown("""
+        ### 📝 모든 모드 공통
+        - **1 키**: 정답 보기 (암기 연습 모드)
+        - **2 키**: 다음 문제로 넘어가기
+        
+        ### 🔤 선택지 입력
+        - **A 키**: 1번 선택지 선택
+        - **B 키**: 2번 선택지 선택  
+        - **C 키**: 3번 선택지 선택
+        - **D 키**: 4번 선택지 선택
+        - **E 키**: 5번 선택지 선택
+        
+        ### ⌨️ 기타
+        - **Enter 키**: 답 제출/시험 제출
+        
+        **💡 팁**: 키보드만으로 빠르게 학습할 수 있습니다!
+        """)
 
 if __name__ == "__main__":
     main()
