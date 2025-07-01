@@ -389,7 +389,6 @@ HANJA_DATA = {
 
 # 엑셀에서 가져온 사자성어 데이터 (겉뜻과 속뜻 구분)
 IDIOM_DATA = {
-    IDIOM_DATA = {
     "法古創新": {
         "korean": "법고창신",
         "outer_meaning": "옛것을 본받아 새로운것을 창조한다",
